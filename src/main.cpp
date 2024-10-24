@@ -40,17 +40,6 @@ Timer readRssiTimer;          // read Rssi
 Timer mqttdisconnectTimer;    // Intervall Disconnect from mqtt
 Timer SthzMinuteTimer;        // Minuten Timer für die Standheizung
 
-
-/*
-//Timer für eine ramdom outTemperatur - nur testhalber - wird aufgerufen im Setup durch: pollGpsTimer.setCallback(randomTemperature);
-void randomTemperature() {
-  outTemp = ((float)random(2000,3000)) / 100.0; // Create a random temperature between 20 and 30
-  debug("----------------------------------------------------------------------Aussentemperatur: ");
-  debugln(outTemp);
-  }
-*/
-
-
 /***************************************
 *********** SET-UP SECTION *************
 ****************************************/
