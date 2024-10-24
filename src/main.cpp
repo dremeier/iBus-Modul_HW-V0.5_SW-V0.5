@@ -2,7 +2,7 @@
 Sara-R5 mit Sparkfun Lib und iBusTrx Lib
 Sara working Mqtt 3.11 Verbindung mit SSL/TTL zum ioBroker, GPS-Daten, Neopixels
 erster Versuch mit Ibus, HW-Version 0.5
-by AME 28/09/2024
+by AME 24/10/2024 HW 0.5
 */
 
 #include <Arduino.h>
