@@ -377,7 +377,6 @@ void loop() {
   TimerManager::instance().update();  // Update all the timers at once
   mySARA.bufferedPoll();              // Keep processing data from the SARA / Schau nach op daten vorhanden sind
     
-
   /* ***************** iBUS Staff **************************************************** */
   Daemmerung();     // gehe zu Dämmerung und messe Helligkeit und ggf schalte Heimleuchten ein
   iBusMessage();    // iBus Message auswerten, wenn vorhanden
@@ -415,7 +414,7 @@ void loop() {
     }
   }
   
-  // In real testen obe es auch ohne diese Abfrage hier funktioniert
+  // In real testen ob es auch ohne diese Abfrage hier funktioniert
   // Überprüfe, ob das CTS-Signal LOW ist
   if (!digitalReadFast(senSta)){ClearToSend();}
 
