@@ -1,0 +1,80 @@
+#######################################
+# Syntax Coloring Map For MyINA219
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+MyINA219	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+isReady	KEYWORD2
+init	KEYWORD2
+setShuntResistor	KEYWORD2
+conversionReady	KEYWORD2
+currentOverflow	KEYWORD2
+voltageOverflow	KEYWORD2
+startSingleMeas	KEYWORD2
+startSingleMeas	KEYWORD2
+startContinuousMeas	KEYWORD2
+startContinuousMeas	KEYWORD2
+setMode	KEYWORD2
+setShuntADC	KEYWORD2
+setBusADC	KEYWORD2
+setGain	KEYWORD2
+getGain	KEYWORD2
+setRange	KEYWORD2
+getRange	KEYWORD2
+reset	KEYWORD2
+calcShuntVoltage	KEYWORD2
+calcBusVoltage	KEYWORD2
+calcCurrent	KEYWORD2
+calcPower	KEYWORD2
+readRawValues	KEYWORD2
+readRegister	KEYWORD2
+setPowerDown	KEYWORD2
+setADCDown	KEYWORD2
+printConfigRegister	KEYWORD2
+printAllRegister	KEYWORD2
+#######################################
+# Instances (KEYWORD2)
+#######################################
+
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+
+INA219_SHUNT_BUS_VOLTAGE_CONT	LITERAL1
+INA219_BUS_VOLTAGE_CONT	LITERAL1
+INA219_SHUNT_VOLTAGE_CONT	LITERAL1
+INA219_ADC_OFF	LITERAL1
+INA219_SHUNT_BUS_VOLTAGE_TRIG	LITERAL1
+INA219_BUS_VOLTAGE_TRIG	LITERAL1
+INA219_SHUNT_VOLTAGE_TRIG	LITERAL1
+INA219_POWER_DOWN	LITERAL1                
+INA219_ADC_9_BIT	LITERAL1
+INA219_ADC_10_BIT	LITERAL1
+INA219_ADC_11_BIT	LITERAL1
+INA219_ADC_12_BIT	LITERAL1
+INA219_ADC_2_SAMPLES	LITERAL1
+INA219_ADC_4_SAMPLES	LITERAL1
+INA219_ADC_8_SAMPLES	LITERAL1
+INA219_ADC_16_SAMPLES	LITERAL1
+INA219_ADC_32_SAMPLES	LITERAL1
+INA219_ADC_64_SAMPLES	LITERAL1
+INA219_ADC_128_SAMPLES	LITERAL1
+INA219_GAIN_40	LITERAL1
+INA219_GAIN_80	LITERAL1
+INA219_GAIN_160	LITERAL1
+INA219_GAIN_320	LITERAL1
+INA219_RANGE_16	LITERAL1
+INA219_RANGE_32	LITERAL1
+INA219_ADC_DOWN_ON	LITERAL1
+INA219_ADC_DOWN_OFF	LITERAL1
+INA219_POWER_DOWN_ON	LITERAL1
+INA219_POWER_DOWN_OFF	LITERAL1

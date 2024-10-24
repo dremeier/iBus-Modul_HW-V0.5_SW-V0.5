@@ -1,0 +1,108 @@
+####################### Der MQTT weg von Sara_R5 zum ioBroker: #########################################################################################
+Client Sara-r5 -> trac.dnshome.de -> pfsense NAT an 10.10.10.201 nginx Port 8883 -> nginx SSL offload -> iobroker MQTT.1 192.168.107.220 Port 1899
+es wird unter nginx kein Profil benötigt, nur der "stream" regelt den Verkehr und SSL-Offloading
+Weiteres unter: "C:\share\Netzwerk-Server\Proxmox\docker\docker - nginx - bitwarten- notizen.txt"
+########################################################################################################################################################
+
+############ Sollte die Verbindung von Sara aus nicht klappen ! #################################
+Prüfen ob Ping klappt : AT+UPING="trac.dnshome.de"
+Wenn nicht Profil prüfen: 
+AT+UPSD=0,100,1 
+AT+UPSDA=0,3
+#################################################################################################
+
+https://developer.thingstream.io/guides/location-services/celllocate-getting-started/module-connection-setup
+
+This section is intended to provide you a quick guide on how to setup the connection of your R4/R5 modules  using AT commands so that you can easily test the service. For a complete documentation, refer to document  SARA-R4 / SARA-R5 Internet applications development guide
+
+Network setting verification
+The  following  example  reports  the  AT  commands  necessary  to  reach  the  activation  of a PDP context at first then a data socket by starting from the power-up of the module and the control of the pre-existing settings.
+
+AT+CFUN=0  - Turn OFF the radio functionality to set the network profile
+AT+UMNOPROF=100  - Set the MNO profile for usage in Europe. For other countries look at UMNOPROF command in AT Command manuale
+AT+CFUN=16  - Reboot the modules to make the new settings effective
+AT+UMNOPROF?  -  Verify that the new profile has been set
+AT+CFUN=0  - Turn OFF the radio
+AT+CGDCONT=1,"IPV4V6" , "apn_name"  - Define the PDP context 1 with PDP type "IPV4V6" and APN "apn_name" of the MNO
+
+Network registration check
+LTE radio access technology
+Verify that the module is registered on the LTE network
+
+AT+CFUN=1  - Turn ON the radio 
+AT+COPS?  - verify if the module is currently registered to the network
++COPS: 0,0,"Your MNO",7
+where
+0 is the default value for mode, and format (for more information you are invited to look at AT Command manual)
+7  represent the act that indicates the radio access technology (LTE=7)
+AT+CEREG?  - Valid responses are
++CEREG: 0,5 - registered to network in roaming (5)
++CEREG: 0,1 - registered to home network (1)
+AT+CGATT? - where the valid response is
++CGATT: 1 -  attached to the network
+AT+CGDCONT? - Get the IP address assigned by the network to the module
++CGDCONT: 1,"IP","MNO_APN_url","10.66.197.221",0,0,0,2,0,0,0,0,0,0,0
+where 10.66.197.221 is the IP Address assigned to your device by the MNO. For a complete list of the parameters you are invited to look at the AT Command manual
+GPRS/eGPRS radio access technology
+Verify that the module is registered on the 2G network
+AT+CFUN=1  - Turn ON the radio 
+AT+COPS?  - verify if the module is currently registered to the network
+AT+CGACT=1,1  - Activate PDP context 1
+AT+CGDCONT? - Get the IP address assigned by the network
+
+Profile activation
+SARA-R5 modules
+AT+UPSD=0,0,0   - Set the PDP type to IPv4 referring to the output of the +CGDCONT read command
+AT+UPSD=0,100,1  -  Map the profile on CID=1
+AT+UPSDA=0,3  - Activate the PSD profile #0: the IPV4 address is already assigned to the network
++UUPSDA: 0,"10.66.197.221"
+
+After these sequence  you are ready to use the CellLocate service issuing the AT+ULOC command to get the location, as described in the getting started guide.
+
+Check radio signal
+It might be also useful to check the radio signal with
+AT+CSQ
+The module response is in the format 
++CSQ: <signal_power>,<qual>
++CSQ: 24,5
+The response provides the RSSI (Received Signal Strength Indication) and the quality indicator (represented by RSRQ). The value mapping for both parameters is provided in the two tables below
+
+DNS verification
+The CellLocate  client in the cellular module needs to resolve the url endpoint provided in the UGSRV command regardless if you are using the Device to Service endpoints (cell-live1.services.u-blox.com, cell-live2.services.u-blox.com ) or the Service to Service mode with your application server endpoint
+
+In the case you are not able to get a position from CellLocate service, you might verify if you are getting the DNS IP address from the service provider. For this purpose you can use the following command to verify the PDP context providing in input the ID of the connection (1 in the following example)
+
+AT+CGCONTRDP=1
++CGCONTRDP: 1,5,"TSIOT","10.66.199.116","","212.9.0.135","212.9.0.136"
+The reply (+CGCONTRDP) provides back the following relevant information:
+the APN: TSIOT in the example
+the IP address assigned to your device by the network operator: 10.66.199.116 in the example
+Primary and secondary DNS server IP addresses: 212.9.0.135 and 212.9.0.136 in the example
+If you do not get back this information , it means that the connection is not properly established and it's not possible to use CellLocate service. If you are getting back the only the device IP address but not the DNS IPs, it means that the network operator is not providing you such information. In this case:
+In SARA-R5 you can set your own DNS IPs by using +UPSD AT command. You are invited to look at the latest version of AT command manual in the u-blox website 
+In SARA-R422, the feature for DNS IPs manual setting will be available in a future firmware using the same command as for R5. We invite you to check the corresponding AT command manual or contact the support
+You can set any public DNS IP, just choosing your preferred ones.
+To verify if  DNS IPs are properly set you can use the following AT commands:
+To verify that the DNS servers are reachable set the IP address of primary or secondary DNS (obtained through AT+CGCONTRDP  command as explained above. DNS IPs are usually  provided by your network operator. In the below example Google DNS is used  and a valid reply is shown
+
+AT+UPING="8.8.8.8"
+OK
+
++UUPING: 1,32,"dns.google","8.8.8.8",114,85
++UUPING: 2,32,"dns.google","8.8.8.8",114,77
++UUPING: 3,32,"dns.google","8.8.8.8",114,77
++UUPING: 4,32,"dns.google","8.8.8.8",114,74
+
+The response uses the following format
++UUPING: <retry_num>,<p_size>,<remote_hostname>,<remote_ip>,<ttl>,<rtt>
+
+To verify that an url can be properly translated/resolved in an IP address by the DNS server
+
+AT+UDNSRN=0,"www.u-blox.com"
+AT+UDNSRN=0,"trac.dnshome.de"
++UDNSRN: "34.159.25.198"
+OK
+	or
+AT+UDNSRN=0,"cell-live1.services.u-blox.com"
++UDNSRN: "34.240.192.217"
+OK
