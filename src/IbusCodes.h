@@ -33,8 +33,10 @@ extern uint8_t SthzAUS[5];
 
 // ########################## Funktionserklärungen ############################
 void iBusMessage();
+void processStatusMessage(uint8_t byte1, uint8_t byte2);
 void Coolant(uint8_t temp);        // Funktion zur Anzeige der Kühlmitteltemperatur im Bordmonitor
 void Daemmerung();                 // Funktion zur Messung der Umgebungshelligkeit und Steuerung des Heimleuchtens
 void ClearToSend();
+void updateNavZoom();
 
 #endif

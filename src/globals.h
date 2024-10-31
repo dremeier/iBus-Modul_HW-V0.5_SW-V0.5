@@ -101,7 +101,7 @@ extern uint8_t altitude;            // Höhe über Meeresspiegel (GPS)
 extern float kwassertemp;           // Kühlwassertemperatur in °C
 extern float outTemp;               // Außentemperatur in °C
 extern uint8_t coolant;             // Kühlmitteltemperatur in °C
-extern bool lock;                   // Türen verriegelt (true/false)
+extern bool ZVlocked;                   // Türen verriegelt (true/false)
 extern String driverID;             // Aktuelle Fahrer-ID
 extern bool Ignition;               // Zündung an/aus (true/false)
 extern float bat;                   // Batteriespannung in Volt
@@ -145,7 +145,7 @@ extern float prevLat;
 extern float prevLon;
 extern float prevKwassertemp;
 extern float prevAussentemp;
-extern bool prevLock;
+extern bool prevZVlocked;
 extern String prevDriverID;
 extern bool prevIgnition;
 extern float prevBat;
@@ -188,7 +188,7 @@ extern unsigned long SleepTime;        // Zeit bis zum Einschlafen des TH3122
 extern unsigned int t_clearIKE;        // Zeit in Millisekunden bis der Text im IKE gelöscht wird
 extern bool Tippblinken;               // Flag zum Aktivieren/Deaktivieren der Tippblinker-Funktion
 extern bool AutomVerriegeln;           // Automatische Verriegelung bei Geschwindigkeit > 30 km/h
-extern bool ZVlocked;                  // Flag für "geschlossene" Türen bei Geschwindigkeit
+extern bool ZVlockDone;                    // Flag für "geschlossene" Türen bei Geschwindigkeit
 extern uint8_t BlinkcountLi;           // Zähler für Blinker links
 extern uint8_t BlinkcountRe;           // Zähler für Blinker rechts
 extern byte LCMdimm[16];               // Ausgelesener Dimmwert des LCM (Lichtsteuergerät)

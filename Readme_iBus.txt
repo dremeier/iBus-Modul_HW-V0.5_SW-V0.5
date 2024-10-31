@@ -49,4 +49,17 @@ F0 04 3B 48 05 82   -> ("Hallo BMW iBus")
 ### Prüfung Automatisch-Verriegeln:
 Speed > 20KM ->>>   80 05 BF 18 3F 18
 speed =0 ->>>       80 05 BF 18 00 18
+speed und RPM =0 ->>> 80 05 BF 18 00 00
 MotorOFF ->>>       80 05 BF 11 00 2A
+80 05 BF 11 01 2B      Zündung Pos.1
+ZVunlocked, Tür Vorne links auf ->>>       00 05 BF 7A 11 3A 
+ZVunlocked, alle Türen zu       ->>>       00 05 BF 7A 10 3A 
+ZVlocked, alle Türen zu         ->>>       00 05 BF 7A 20 3A
+
+### Prüfung NaviZomm test:
+speed =0  ->>>      80 05 BF 18 00 00   erwarte: B0 05 7F AA 10 02 72  NavZoom200m
+speed =22 ->>>      80 05 BF 18 0B 09   erwarte: B0 05 7F AA 10 02 72  NavZoom200m
+Speed =56 ->>>      80 05 BF 18 1C 15   erwarte: B0 05 7F AA 10 04 74  NavZoom500m
+speed =70 ->>>      80 05 BF 18 23 18   erwarte: B0 05 7F AA 10 04 74  NavZoom500m
+speed =90 ->>>      80 05 BF 18 2D 18   erwarte: B0 05 7F AA 10 10 60  NaviZomm1km
+speed =120 ->>>     80 05 BF 18 3C 18   erwarte: B0 05 7F AA 10 12 62  NaviZomm5km

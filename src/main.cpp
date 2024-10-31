@@ -16,13 +16,11 @@ by AME 24/10/2024 HW 0.5
 #include "timerManager.h"       // Timer Lib um Delay zu vermeiden
 #include <EEPROM.h>             // zum speichern der Variablen in das EEprom
 #include "math_functions.h"     // Math Funktion zum berechnen der GPS Entfernung und Winkel
-/* ibus libs */
 #include <IbusTrx.h>            // IbusTrx library selbst abgeändert und erweitert
 #include <Wire.h>
 #include "IbusCodes.h"          // hier sind alles Ibus-Codes und Variablen zur Configuration
 #include "bluetooth.h"          // Bluetooth funktionen
 //#include <Snooze.h>             // Teensy Snooze Lib
-
 
 //SnoozeUSBSerial usb;
 //SnoozeDigital digital;                  // this is the pin's wakeup driver
@@ -52,8 +50,7 @@ void setup() {
   controlLED(2, CRGB::DarkMagenta, 0);    // LED 3 GPS
 
   /* ######### PIN und UART ########################################### */
-  //pinMode(Sara_PWR_ON, INPUT);        // PWR_ON ist ein Output der in der sparkfun lib configuriert wird, wird hier jedoch auf high-Z gestellt, nur für V0.4
-  //pinMode(Sara_RST, INPUT);           // RST ist ein Output, wird hier jedoch auf high-Z gestellt, nur für V0.4
+  mySARA.invertPowerPin(true);          // invert the power pin so it pulls high instead of low
   pinMode(Sara_RI, INPUT_PULLUP);
   pinMode(LED_BUILTIN,OUTPUT);
   pinMode(SthzRelais,OUTPUT);
@@ -69,7 +66,7 @@ void setup() {
   debugbegin(115200);
   delay(100); // Kurze Verzögerung, um sicherzustellen, dass das Gerät bereit ist
   debugln("_________ Debugausgabe des iBus Modules V0.5 _________");
-  delay(1000);
+  delay(100);
   RI_state_last = digitalReadFast(Sara_RI);
   
   // Initialize the SARA-UART Parameter: Serialx, Baud, rtsPin, ctsPin
@@ -172,7 +169,7 @@ void setup() {
   #endif
 
   // ########################### INA219 Stromsensor Stuff #####################################
-   if(!ina219.init()){
+  if(!ina219.init()){
     debugln("INA219 not connected!");
    // while(1);
   }
@@ -181,7 +178,7 @@ void setup() {
   ina219.setPGain(PG_40);               // Auflösung bis 400mA bei shunt 0.1 OHM, bei 0,05 OHM 800mA
   ina219.setBusRange(BRNG_16);
 
-  // ######################## SARA  Debugging on-Off: #####################################################
+  // ######################## SARA Debugging on-Off: #####################################################
   mySARA.enableDebugging(); // Uncomment this line to enable helpful debug messages on Serial
   //------------------------------ SARA  Connect to the Operator -----------------------------------------------------
   String currentOperator = "";
@@ -269,7 +266,7 @@ void setup() {
   prevLon = lon;
   prevKwassertemp = kwassertemp;
   prevAussentemp = outTemp;
-  prevLock = lock;
+  prevZVlocked = ZVlocked;
   prevDriverID = driverID;
   prevIgnition = Ignition;
   prevBat = bat;
@@ -281,7 +278,7 @@ void setup() {
   prevRemT = remT;
   prevStat = stat;
 
-  //Set Timer in milliseconds  ++++++++++++++++++ TIMER ++++++++++++++++++++++++++++
+  // Set Timer in milliseconds  ++++++++++++++++++ TIMER ++++++++++++++++++++++++++++
   pollGpsTimer.setInterval(15000);                // PollGPSData, hole alle 15sec. GPS daten
   publishSaraTimer.setTimeout(40000);             // 40 sec um einmalig die Sara-Daten zu senden   
   readMqttTimer.setTimeout(900);                  // 200ms, readMqttData  
@@ -291,7 +288,6 @@ void setup() {
   readRssiTimer.setInterval(3000);
   mqttdisconnectTimer.setInterval(3600000);        // (60min) intervall disconnect from mqtt, 1h = 3600000
   SthzMinuteTimer.setInterval(60000);              // Minuten Timer für die Standheizung
-
   
   pollGpsTimer.setCallback(PollGPSData);          // PollGPSData()
   publishSaraTimer.setCallback(publishSaraData);  // 40 sec um einmalig die Sara-Daten zu senden  
@@ -302,7 +298,6 @@ void setup() {
   readRssiTimer.setCallback(readRssi);
   mqttdisconnectTimer.setCallback(mqttdisconnect);  // intervall disconnect from mqtt
   SthzMinuteTimer.setCallback(updateSthzTimer);     // Minuten Timer für die Standheizung
-
 
   pollGpsTimer.start();                           // PollGPSData
   //publishSaraTimer.start();                     // um einmalig die Sara-Daten zu senden / wird in funktion "void mqttCommandResultCallback" aufgerufen
@@ -364,46 +359,41 @@ void loop() {
   updateLEDs();                       // Neopixel LEDs aktualisieren
   publishMetricsData();               // MQTT, Publiziere alle Fahrzeugdaten (Metrics)
   TimerManager::instance().update();  // Update all the timers at once
-  mySARA.bufferedPoll();              // Keep processing data from the SARA / Schau nach op daten vorhanden sind
-    
-  /* ***************** iBUS Staff **************************************************** */
-  Daemmerung();     // gehe zu Dämmerung und messe Helligkeit und ggf schalte Heimleuchten ein
-  iBusMessage();    // iBus Message auswerten, wenn vorhanden
+  mySARA.bufferedPoll();              // Keep processing data from the SARA / Schau nach op daten vorhanden sind    
+  iBusMessage();                      // iBus Message auswerten, wenn vorhanden
+  Daemmerung();                       // gehe zu Dämmerung und messe Helligkeit und ggf schalte Heimleuchten ein
 
-  // ############################# weiter im Loop ##############
-  // Text im IKE löschen
-  if (IKEclear)                               // bereit um den Text im IKE zu löschen
+  // Texte im IKE löschen
+  if (IKEclear && (speed > 30))             // bereit um den Text im IKE zu löschen wenn speed größer 30km/h
   { 
-    if (speed > 30)
-    {
-      ibusTrx.write(cleanIKE);                // lösche den Text
-      IKEclear=false;                         // Fertig
-    }
-    /*
-    if ((millis()-msTimer) >= t_clearIKE)     // Zeit abgelaufen?
-    {      
-      ibusTrx.write(cleanIKE);                // lösche den Text
-      IKEclear=false;                         // Fertig
-    }*/
+    ibusTrx.write(cleanIKE);                // lösche den Text
+    IKEclear=false;                         // Fertig
   }
   
+  // Automatisches Verriegln
   if (AutomVerriegeln)                        // Automatisches Verriegln bei Geschwindigkeit > 30Km/h und Entriegeln bei Motor aus
   {
-    if (!ZVlocked && (speed > 20) && Ignition)   // wenn speed größer 20 km/h dann ZV verriegeln
+    if (!ZVlockDone && !ZVlocked && Ignition && (speed > 20))  //if (!ZVlockDone && !ZVlocked && (speed > 20) && Ignition)  // wenn speed größer 20 km/h dann ZV verriegeln
     {
       ibusTrx.write(ZV_lock);
-      ZVlocked =true;
-      debugln("Locked");
+      ZVlockDone =true;
+      debugln("Zentralverriegelung locked");
     }
-    if (!Ignition && ZVlocked)                     // Motor aus / Zündung aus dann Entriegeln
+    else if (ZVlockDone && !Ignition && ZVlocked)                     // Motor aus / Zündung aus dann Entriegeln
     {
       ibusTrx.write(ZV_lock);
-      ZVlocked =false;
-      debugln("Unlocked");
+      ZVlockDone =false;
+      debugln("Zentralverriegelung unlocked");
     }
   }
   
-  // In real testen ob es auch ohne diese Abfrage hier funktioniert
+  // Automatischer Navigations Zomm je nach Geschwindigkeit
+  if (NaviScale)
+  {
+    updateNavZoom();
+  }
+
+  // TODO: In real testen obe es auch ohne diese Abfrage hier funktioniert
   // Überprüfe, ob das CTS-Signal LOW ist
   if (!digitalReadFast(senSta)){ClearToSend();}
 

@@ -48,11 +48,12 @@ void iBusMessage(){
           switch (message.b(1))                             // zweite Nachrichten Byte
           {
             case 0x22:
-              ibusTrx.writeTxt("einsteigen Cordula");       // 00 04 BF 72 22 ck  
-              debugln("................. Schlüssel Cordula erkannt");
+              ibusTrx.writeTxt("einsteigen Cordula");       // 00 04 BF 72 22 ck 
+              driverID = "Cordula"; 
               break;
             case 0x26:  // Funkschlüssel Andre auf
               ibusTrx.writeTxt("einsteigen Andre");
+              driverID = "Andre";
               break;
             case 0x12:
               ibusTrx.writeTxt("Tschuess Cordula");
@@ -65,17 +66,9 @@ void iBusMessage(){
           }
           break;
         
-        case 0x7A:                                // status Fahrertür ist auf (wenn Tür auf geht Heimleuchten einschalten)
-          switch (message.b(1))
-          {
-            case 0x51:                            // 00 05 BF 7A 51 status Fahrertür ist auf (wenn Tür auf geht Heimleuchten einschalten)
-              DvrdoorFr = true;
-              break;
-            
-            default:
-              DvrdoorFr = false;
-              break;
-          }
+        case 0x7A:                                // Status z.b. Fahrertür ist auf (wenn Tür auf geht Heimleuchten einschalten)
+          processStatusMessage(message.b(1), message.b(2));
+          
         break;
 
         default:
@@ -86,34 +79,44 @@ void iBusMessage(){
     // Schlüssel im Schloß , Motor aus, Tankinhalt // 44 05 bf 74 xx xx
     if ((source == M_EWS) && (destination == M_ALL) && (message.b(0) == 0x74))
     {
-      if (message.b(1) == 0x05)                                     // 44 05 bf 74 05 xx    Motor aus
-      {              
-        if (message.b(2) == 0x00)
+        switch (message.b(1))
         {
-          ibusTrx.writeTxt("bis bald Cordula");                     // schlüssel stellung 1 -> 0, Corula
+            case 0x05:                                          // 44 05 bf 74 05 xx    Motor aus
+                switch (message.b(2))
+                {
+                    case 0x00:
+                        ibusTrx.writeTxt("bis bald Cordula");   // Schlüsselstellung 1 -> 0, Cordula
+                        break;
+                    case 0x05:
+                        ibusTrx.writeTxt("bis bald Andre");     // Schlüsselstellung 1 -> 0, Andre
+                        break;
+                    default:
+                        break;
+                }
+                ibusTrx.write(Tankinhalt);                      // 3F 04 80 0B 0A Tankinhalt abfragen (TODO: Antwort noch ermitteln!)
+                break;
+
+            case 0x04:                                          // 44 05 bf 74 04 xx Schlüssel wird ins Schloss gesteckt
+                switch (message.b(2))
+                {
+                    case 0x00:
+                        ibusTrx.writeTxt("gute Fahrt Cordula");  // 44 05 bf 74 04 00 Cordula
+                        IKEclear = true;
+                        break;
+                    case 0x05:
+                        ibusTrx.writeTxt("gute Fahrt Andre");   // 44 05 bf 74 04 05 Andre
+                        IKEclear = true;
+                        break;
+                    default:
+                        break;
+                }
+                break;
+
+            default:
+                break;
         }
-        if (message.b(2) == 0x05) 
-        {
-          ibusTrx.writeTxt("bis bald Andre");                       // schlüssel stellung 1 -> 0, Andre
-        }
-        ibusTrx.write(Tankinhalt);                                  // Tankinhalt Abfragen (Antwort noch ermitteln!)
-      }
-      if (message.b(1) == 0x04)                                     // 44 05 bf 74 04 xx   Schlüssel wird ins Schloß gesteckt
-      {               
-        if (message.b(2) == 0x00)
-        {
-          ibusTrx.writeTxt("gute Fahrt Cordula");                    // 44 05 bf 74 04 00 Cordula 
-          IKEclear=true;                                             // bereit um den Text im IKE zu löschen
-          msTimer=millis();                                          // aktuelle Zeit in den Timer legen
-        }
-        if (message.b(2) == 0x05) 
-        {
-          ibusTrx.writeTxt("gute Fahrt Andre");                      // 44 05 bf 74 04 05 Andre
-          IKEclear=true;                                             // bereit um den Text im IKE zu löschen
-          msTimer=millis();                                          // aktuelle Zeit in den Timer legen
-        }
-      } 
     }
+
 
     // wenn tippblinken true dann:
     // Blinker: Wenn Blinkerpfeil im IKE links: D0 07 BF 5B 20 00 04 00 17 oder Blinkerpfeil im IKE rechts:  D0 07 BF 5B 40 00 04 00 77
@@ -142,7 +145,7 @@ void iBusMessage(){
               debugln(BlinkcountLi);
               if (BlinkcountLi < 2) 
               {
-                turn=1;                      // Blinker links ein/LICHT ein
+                turn=1;                      // Blinker links ein
                 debugln("send LCM Dimmer Request Turn=1");
                 ibusTrx.write(LCMdimmReq);                                               // Anfrage Dimm-Wert des IKE Cluster vom LCM: 3F 03 D0 0B (E7)                 
               }
@@ -244,7 +247,7 @@ void iBusMessage(){
               debug("Speed: ");
               debugln(speed);
               debug("RPM: ");
-              debugln(rpm);
+              debugln(rpm);           
             break;
 
           case 0x19:                                // 80 05 BF 19 2F 5C (50),IKE --> GLO Temperature Outside 47C Coolant 92C
@@ -276,10 +279,7 @@ void iBusMessage(){
                     switch (message.b(2))
                     {
                       case 0x2B:                      // Zündung Pos1  80 05 BF 11 01 2B
-                          digitalWrite(PCM_EN, HIGH);   // Power für PCM-Section einschlaten
-                          digitalWrite(sys_ctl, LOW);   // Bluetooth einschalten
-                          sysctl_timer =millis();
-                          sysctl_on=true;  
+                          Ignition = true;
                           debugln("Zündung Pos1");
                         break;
                     }
@@ -360,7 +360,7 @@ void iBusMessage(){
       }
     }
     
-    // Bordmonitor-Tasten zum Radio
+    // Bordmonitor-Tasten F0 zum Radio 68
     if (source == M_BMB && destination == M_RAD) {
         switch (message.b(0))
       {
@@ -429,6 +429,7 @@ void iBusMessage(){
             break;
             case 0x03:            // F0 04 68 48 03 C5
               // BMB-Taste 6 push
+              BTcom.println("AT+PLAYPAUSE");
               debugln("BMB-Taste 6 push");
             break;
             case 0x83:            // F0 04 68 48 83 C5
@@ -441,12 +442,12 @@ void iBusMessage(){
         case 0x32: // // linker dreh-Encoder
           switch (message.b(1))
           {
-            case 0x11:                  // 50 04 68 3B 01
+            case 0x11:                  // F0 04 68 32 11
               BTcom.println("AT+FORWARD");
               debugln("“>” nächster Titel");
             break;
           
-            case 0x08:                  // 50 04 68 3B 08
+            case 0x10:                  // F0 04 68 32 10
               BTcom.println("AT+BACKWARD");
               debugln("“<” vorheriger Titel");
             break;
@@ -478,6 +479,104 @@ void iBusMessage(){
   //  Snooze.deepSleep( config_sleep ); // deepSleep ~20mA, sleep ~30mA, in hibernate IBUStrx does not woke up
   }    
   // ############################ iBus message read ENDE #################################
+}
+
+
+// Variablen für jeden Status
+bool doorFrontLeft = false;
+bool doorFrontRight = false;
+bool doorRearLeft = false;
+bool doorRearRight = false;
+bool ZVunlocked = false;
+//bool ZVlocked = false;  Global definiert
+bool interiorLight = false;
+
+bool windowFrontLeft = false;
+bool windowFrontRight = false;
+bool windowRearLeft = false;
+bool windowRearRight = false;
+bool sunroof = false;
+bool trunk = false;
+bool hood = false;
+
+void processStatusMessage(uint8_t byte1, uint8_t byte2) {
+  // Bitmasken dekodieren und in Variablen speichern
+  
+  // Byte 1
+  doorFrontLeft = (byte1 & 0x01) ? 1 : 0;      // Bit 0
+  doorFrontRight = (byte1 & 0x02) ? 1 : 0;     // Bit 1
+  doorRearLeft = (byte1 & 0x04) ? 1 : 0;       // Bit 2
+  doorRearRight = (byte1 & 0x08) ? 1 : 0;      // Bit 3
+  ZVunlocked = (byte1 & 0x10) ? 1 : 0;         // Bit 4
+  ZVlocked = (byte1 & 0x20) ? 1 : 0;           // Bit 5
+  interiorLight = (byte1 & 0x40) ? 1 : 0;      // Bit 6
+
+  // Byte 2
+  windowFrontLeft = (byte2 & 0x01) ? 1 : 0;    // Bit 0
+  windowFrontRight = (byte2 & 0x02) ? 1 : 0;   // Bit 1
+  windowRearLeft = (byte2 & 0x04) ? 1 : 0;     // Bit 2
+  windowRearRight = (byte2 & 0x08) ? 1 : 0;    // Bit 3
+  sunroof = (byte2 & 0x10) ? 1 : 0;            // Bit 4
+  trunk = (byte2 & 0x20) ? 1 : 0;              // Bit 5
+  hood = (byte2 & 0x40) ? 1 : 0;               // Bit 6
+
+  /*
+  Beispiel: Filtern von Bit 0 mit doorFrontLeft = (byte1 & 0x01) ? 1 : 0;
+  1. Bitmaske erstellen
+  Die Bitmaske 0x01 (hexadezimal für 00000001 im Binärformat) hat nur das Bit 0 gesetzt und alle anderen Bits auf 0.
+  Die Idee dahinter ist, dass beim AND-Vergleich nur das entsprechende Bit in byte1 (hier Bit 0) "durchgelassen" wird, alle anderen Bits in byte1 werden ausgefiltert, weil sie mit 0 multipliziert werden.
+  2. Bitweises UND (AND) zur Extraktion
+  Das &-Operator vergleicht jedes Bit von byte1 mit den Bits der Maske 0x01.
+  Wenn Bit 0 in byte1 gesetzt ist (also 1), ergibt byte1 & 0x01 das Ergebnis 0x01, weil 1 & 1 = 1.
+  Wenn Bit 0 in byte1 nicht gesetzt ist (also 0), ergibt byte1 & 0x01 das Ergebnis 0x00, weil 0 & 1 = 0.
+  3. Ternäre Operation zur Zuweisung
+  Die ternäre Operation (byte1 & 0x01) ? 1 : 0 wird verwendet, um das Ergebnis in doorFrontLeft entweder 1 oder 0 zu setzen:
+  Wenn das Ergebnis von byte1 & 0x01 ungleich 0 ist (also Bit 0 ist gesetzt), wird doorFrontLeft auf 1 gesetzt.
+  Wenn das Ergebnis 0 ist (also Bit 0 ist nicht gesetzt), wird doorFrontLeft auf 0 gesetzt.
+  */
+
+    // Variablenwerte ausgeben
+  debug("doorFrontLeft: ");
+  debugln(doorFrontLeft);
+
+  debug("doorFrontRight: ");
+  debugln(doorFrontRight);
+
+  debug("doorRearLeft: ");
+  debugln(doorRearLeft);
+
+  debug("doorRearRight: ");
+  debugln(doorRearRight);
+
+  debug("ZVunlocked: ");
+  debugln(ZVunlocked);
+
+  debug("ZVlocked: ");
+  debugln(ZVlocked);
+
+  debug("interiorLight: ");
+  debugln(interiorLight);
+
+  debug("windowFrontLeft: ");
+  debugln(windowFrontLeft);
+
+  debug("windowFrontRight: ");
+  debugln(windowFrontRight);
+
+  debug("windowRearLeft: ");
+  debugln(windowRearLeft);
+
+  debug("windowRearRight: ");
+  debugln(windowRearRight);
+
+  debug("sunroof: ");
+  debugln(sunroof);
+
+  debug("trunk: ");
+  debugln(trunk);
+
+  debug("hood: ");
+  debugln(hood);
 }
 
 // Lichtsensor BH1750 und Heimleuchten
@@ -514,7 +613,8 @@ void Daemmerung() {
       dunkel = true;  // nur zum testen wenn kein LDR angeschlossen ist
       */
     }
-  if ((dunkel && !Ignition && DvrdoorFr) || (dunkel && heiml))
+
+  if ((dunkel && !Ignition && doorFrontLeft) || (dunkel && heiml))
   {
     debugln("Heimleuchten gesendet!");
     // Ausgabe des Durchschnitts und des dunkel-flags
@@ -525,7 +625,7 @@ void Daemmerung() {
     //dunkel = true;  // nur zum testen wenn kein LDR angeschlossen ist
     ibusTrx.write (Heimleuchten);
     //Ignition = true;
-    DvrdoorFr = false;
+    doorFrontLeft = false;
     heiml =false;
   }  
 }
@@ -565,6 +665,41 @@ void ClearToSend() {
   ibusTrx.send(); // Nachricht senden, wenn Interrupt ausgelöst wird
 }
 
+void updateNavZoom()
+{ 
+  static int previousNavZoomLevel = 0; // Speichert die vorherige Zoomstufe
+  int navZoomLevel;
+  uint8_t* NavZoom;
+
+  // Definition der IBUS-Codes als uint8_t-Arrays
+  static uint8_t NavZoom200m[] = {0xB0, 0x05, 0x7F, 0xAA, 0x10, 0x02};
+  static uint8_t NavZoom500m[] = {0xB0, 0x05, 0x7F, 0xAA, 0x10, 0x04};
+  static uint8_t NavZoom1km[] = {0xB0, 0x05, 0x7F, 0xAA, 0x10, 0x10};
+  static uint8_t NavZoom5km[] = {0xB0, 0x05, 0x7F, 0xAA, 0x10, 0x12};
+
+  // Bestimmen der Zoomstufe und des entsprechenden Ibus-Codes basierend auf der Geschwindigkeit
+  if (speed < 56) {
+    navZoomLevel = 1;                               // Zoom auf 200m von 0 - 60(digitale 55)km/H
+    NavZoom = NavZoom200m;
+  } else if (speed >= 56 && speed <= 84) {
+    navZoomLevel = 2;                               // Zoom auf 500m von 61 - 90(digitale 85)km/H
+    NavZoom = NavZoom500m;
+  } else if (speed >= 85 && speed <= 114) {
+    navZoomLevel = 3;                               // Zoom auf 1km von 91 - 120km/H
+    NavZoom = NavZoom1km;
+  } else if (speed > 114) {                         // Für Geschwindigkeiten ab 116 km/h
+    navZoomLevel = 4;                               // Zoom auf 5km ab 121km/H
+    NavZoom = NavZoom5km;
+  }
+
+  // Nur senden, wenn sich die Zoomstufe geändert hat
+  if (navZoomLevel != previousNavZoomLevel) {
+    previousNavZoomLevel = navZoomLevel;
+    ibusTrx.write(NavZoom);
+  }
+}
+
+// ###############################################################################################
 // ########################### iBus Codes ########################################################
 // die checksumme muss nicht mit angegeben werden
 uint8_t cleanIKE [6] PROGMEM = {
@@ -594,6 +729,8 @@ uint8_t Tankinhalt[5] PROGMEM = {0x3F, 0x04, 0x80, 0x0B, 0x0A};    // Tankinhalt
 
 uint8_t SthzEIN[5] PROGMEM = {0x3B, 0x04, 0x80, 0x41, 0x12};   // Standheizung EIN: 3B 04 80 41 12 (EC) 
 uint8_t SthzAUS[5] PROGMEM = {0x3B, 0x04, 0x80, 0x41, 0x11};   // Standheizung AUS: 3B 04 80 41 11 (EC) 
+
+
 
 /*
 // Example: define the message that we want to transmit

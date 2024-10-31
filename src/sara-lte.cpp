@@ -169,7 +169,6 @@ void publishSubData() {
 
     JsonDocument doc;  //(1024);
     // Füllen des JSON-Dokuments mit Daten
-    // topic für Metrics
     doc[topic1e][topic2e1] = SthzON;
     doc[topic1e][topic2e2] = gpsAbstand;
     doc[topic1e][topic2e3] = gpsWinkel;
@@ -200,7 +199,7 @@ void publishSubData() {
 // den Json String und gibt ihn im iobroker unter 0_userdata.0.BMW-E38 einzeln wieder aus!
 void publishMetricsData() {
   // Prüfen, ob sich eine der Variablen geändert hat
-  if ( kwassertemp != prevKwassertemp || outTemp != prevAussentemp || lock != prevLock ||
+  if ( kwassertemp != prevKwassertemp || outTemp != prevAussentemp || ZVlocked != prevZVlocked ||
     driverID != prevDriverID || Ignition != prevIgnition || (fabs(bat - prevBat) >= 0.2)  || avrFuel != prevAvrFuel ||
     avrSpeed != prevAvrSpeed || fuel != prevFuel || (fabs(speed - prevSpeed) >= 5) ||             //unter Verwendung der fabs-Funktion aus der cmath-Bibliothek, die den absoluten Wert einer Zahl zurückgibt. Damit wird die Bedingung als true ausgewertet, wenn sich speed um mindestens 5 ändert.
     stat != prevStat || remT != prevRemT) {
@@ -210,7 +209,7 @@ void publishMetricsData() {
     // Aktualisiere die gespeicherten Zustände
     prevKwassertemp = kwassertemp;
     prevAussentemp = outTemp;
-    prevLock = lock;
+    prevZVlocked = ZVlocked;
     prevDriverID = driverID;
     prevIgnition = Ignition;
     prevBat = bat;
@@ -235,7 +234,7 @@ void publishMetricsData() {
     doc[topic1a][topic2a6] = bat;
     doc[topic1a][topic2a7] = Ignition;
     doc[topic1a][topic2a8] = driverID;
-    doc[topic1a][topic2a9] = lock;
+    doc[topic1a][topic2a9] = ZVlocked;
     doc[topic1a][topic2a10] = outTemp;
     doc[topic1a][topic2a11] = kwassertemp;
     doc[topic1a][topic2a12] = strom;

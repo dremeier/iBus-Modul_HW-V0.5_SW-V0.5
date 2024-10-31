@@ -35,15 +35,15 @@ uint8_t altitude;                   // GPS Höhe
 float kwassertemp;                  // Kühlwassertemperatur in C°
 float outTemp;                      // Außen Temperatur
 uint8_t coolant;                    // Kühlmittel Temperatur
-bool lock = 1;                      // Türen Verriegelt 
-String driverID = "Cordula";        // Fahrer ID
+bool ZVlocked = 1;                  // Türen Verriegelt 
+String driverID = "Nil";            // Fahrer ID
 bool Ignition;                      // Zündung an/aus
 float bat = 12.8;                   // Batterie Spannung in V
 float avrFuel = 11.3;               // Durchschnittlicher Kraftstoffverbrauch in L/100Km
 uint16_t avrSpeed = 85;             // Durchschnittsgeschwindigkeit in Km/h
 uint16_t fuel = 41;                 // Tankinhalt in L
-uint16_t speed;                     // Geschwindigkeit in Km/h
-uint16_t rpm;                       // Motordrehzahl
+uint16_t speed = 0;                 // Geschwindigkeit in Km/h
+uint16_t rpm = 0;                   // Motordrehzahl
 uint8_t SthzRuntime = 25;           // maximale Laufzeit der Standheizung
 uint8_t remT = SthzRuntime;         // Restzeit der Standheizung in Minuten
 
@@ -55,7 +55,7 @@ int gpsWinkel = 30;                 // Winkel in Grad bis neue Daten zum Server 
 
 // ######################## Mqtt Sara Variablen #######################
 String HardwareV = "HW 0.5";
-String SoftwareV = "SW 0.5.2";
+String SoftwareV = "SW 0.5.3";
 String Model_ID;
 String FirmwareV;
 String SIM_ID;
@@ -95,6 +95,10 @@ SW 0.5.1
 
 SW 0.5.2 
     Reale Anpassung an HW 0.5 mit Sara-R510M8S-01b        
+
+SW 0.5.3
+    automatischer Navigations Zoom je nach Geschwindigkeit
+
 */
 
 // Timer-Definitionen
@@ -108,7 +112,7 @@ float prevLat;
 float prevLon;
 float prevKwassertemp;
 float prevAussentemp;
-bool prevLock;
+bool prevZVlocked;
 String prevDriverID;
 bool prevIgnition;
 float prevBat;
@@ -145,10 +149,10 @@ bool sysSleep = 0;                  // Flag für Sleep-Timer
 bool th_reset = 0;                  // Testflag
 unsigned long SleepTime = 600000;   // Zeit bis zum Schlafenlegen des TH3122 (60.000 = 1 Minute)
 unsigned int t_clearIKE = 10000;    // Zeit in Millisekunden bis der Text im IKE gelöscht wird
-bool Tippblinken = true;            // Flag zum Ein- und Ausschalten der Tipp-Blinker-Funktion
-bool AutomVerriegeln = true;        // Automatisches Verriegeln bei Geschwindigkeit > 30Km/h und Entriegeln bei Motor aus
+bool Tippblinken ;            // Flag zum Ein- und Ausschalten der Tipp-Blinker-Funktion
+bool AutomVerriegeln;        // Automatisches Verriegeln bei Geschwindigkeit > 30Km/h und Entriegeln bei Motor aus
 //bool MotorOff = false;              // Flag für Motor aus (Schlüssel aus dem Zündschloss)
-bool ZVlocked = false;              // Flag für verriegelte Türen bei Geschwindigkeit über 30Km/h
+bool ZVlockDone = false;              // Flag für verriegelte Türen bei Geschwindigkeit über 30Km/h
 uint8_t BlinkcountLi = 0;           // Zähler für den linken Blinker
 uint8_t BlinkcountRe = 0;           // Zähler für den rechten Blinker
 byte LCMdimm[16];                   // Ausgelesener Dimmwert
