@@ -387,13 +387,20 @@ void loop() {
     }
   }
   
-  // Automatischer Navigations Zomm je nach Geschwindigkeit
+  // Automatischer Navigations Zoom je nach Geschwindigkeit
   if (NaviScale)
   {
     updateNavZoom();
   }
 
-  // TODO: In real testen obe es auch ohne diese Abfrage hier funktioniert
+  // Beim Verriegeln Seitenspiegel anklappen
+  if (SpiegAnkl)
+  {
+    SpiegelAnklappen();
+  }
+  
+  
+  // TODO: In Real testen op es auch ohne diese Abfrage hier funktioniert
   // Überprüfe, ob das CTS-Signal LOW ist
   if (!digitalReadFast(senSta)){ClearToSend();}
 
@@ -444,12 +451,3 @@ void loop() {
   }
 
 } // Ende loop
-
-
-
-
-
-
-
-
-

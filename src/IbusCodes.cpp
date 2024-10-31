@@ -9,6 +9,8 @@
 BH1750 lightMeter;              // Falls der Sensor global definiert ist
 IbusTrx ibusTrx;                // IbusTrx instance
 
+bool sideMirror;
+bool sideMirrorDone;
 
 void iBusMessage(){
   // if there's a message waiting, check it out
@@ -45,21 +47,26 @@ void iBusMessage(){
       {
         case 0x72:                                          // Funkschlüssel auf und zu // 00 04 BF 72 xx
           heiml =true;
+          sideMirrorDone=true;
           switch (message.b(1))                             // zweite Nachrichten Byte
           {
             case 0x22:
               ibusTrx.writeTxt("einsteigen Cordula");       // 00 04 BF 72 22 ck 
               driverID = "Cordula"; 
+              sideMirror =1;
               break;
             case 0x26:  // Funkschlüssel Andre auf
               ibusTrx.writeTxt("einsteigen Andre");
               driverID = "Andre";
+              sideMirror =1;
               break;
             case 0x12:
               ibusTrx.writeTxt("Tschuess Cordula");
+              sideMirror =0;
               break;
             case 0x16:  // FunkSchlüssel Andre zu
               ibusTrx.writeTxt("Tschuess Andre");
+              sideMirror =0;
               break;
             default:
               break;
@@ -665,6 +672,7 @@ void ClearToSend() {
   ibusTrx.send(); // Nachricht senden, wenn Interrupt ausgelöst wird
 }
 
+// Automatischer Navigations Zoom je nach Geschwindigkeit
 void updateNavZoom()
 { 
   static int previousNavZoomLevel = 0; // Speichert die vorherige Zoomstufe
@@ -699,34 +707,48 @@ void updateNavZoom()
   }
 }
 
+// Beim Verriegeln Seitenspiegel anklappen
+void SpiegelAnklappen()
+{
+  // Definition der IBUS-Codes für das Spiegelklappen als Byte-Arrays
+  static uint8_t einklappenFahrer[] = {0x3F, 0x06, 0x00, 0x0C, 0x01, 0x31, 0x01, 0x04};
+  static uint8_t einklappenBeifahrer[] = {0x3F, 0x06, 0x00, 0x0C, 0x02, 0x31, 0x01, 0x07};
+  static uint8_t ausklappenFahrer[] = {0x3F, 0x06, 0x00, 0x0C, 0x01, 0x30, 0x01, 0x05};
+  static uint8_t ausklappenBeifahrer[] = {0x3F, 0x06, 0x00, 0x0C, 0x02, 0x30, 0x01, 0x06};
+
+  if (sideMirrorDone)                         // wenn mit dem Funkschlüssel auf oder zu geschlossen wurde
+  {
+    if (sideMirror)                           // 1 = Aufgeschlossen also ausfahren
+    {
+      ibusTrx.write(ausklappenFahrer);
+      ibusTrx.write(ausklappenBeifahrer);
+      sideMirrorDone=false;                   // Spiegel ausfahren erledigt
+    } else if (!sideMirror)
+    {
+      ibusTrx.write(einklappenFahrer);
+      ibusTrx.write(einklappenBeifahrer);
+      sideMirrorDone=false;
+    }
+  }  
+}          
+
+
 // ###############################################################################################
 // ########################### iBus Codes ########################################################
 // die checksumme muss nicht mit angegeben werden
-uint8_t cleanIKE [6] PROGMEM = {
-  0x30, 0x05, 0x80, 0x1A, 0x30, 0x00}; // IKE Anzeige wird gelöscht, wichtig sonst bleibt sie immer an
-uint8_t BlinkerRe [13] PROGMEM = {
-  0x3F, 0x0C, 0xD0, 0x0C, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; //3F0FD00C000040000000000000
-uint8_t BlinkerLi [13] PROGMEM = {
-  0x3F, 0x0c, 0xD0, 0x0C, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; // 3F 0B D0 0C 00 00 80 00 00 00 00 00
-uint8_t BlinkerAus [13] PROGMEM = {
-  0x3F, 0x0C, 0xD0, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; //3F0FD00C000000000000000000
+uint8_t cleanIKE [6] PROGMEM = {0x30, 0x05, 0x80, 0x1A, 0x30, 0x00}; // IKE Anzeige wird gelöscht, wichtig sonst bleibt sie immer an
+uint8_t BlinkerRe [13] PROGMEM = {0x3F, 0x0C, 0xD0, 0x0C, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; //3F0FD00C000040000000000000
+uint8_t BlinkerLi [13] PROGMEM = {0x3F, 0x0c, 0xD0, 0x0C, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; // 3F 0B D0 0C 00 00 80 00 00 00 00 00
+uint8_t BlinkerAus [13] PROGMEM = {0x3F, 0x0C, 0xD0, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; //3F0FD00C000000000000000000
 uint8_t LCMdimmReq [] PROGMEM ={0x3F, 0x03, 0xD0, 0x0B}; // Diagnoseanfrage ans LCM um Helligkeitswert für IKE zu finden
 //uint8_t LCMdimmReplay [32] PROGMEM = {0xA0, 0xC1, 0xC0, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0xA0, 0x00, 0x00, 0x88, 0x14, 0x84, 0xE4, 0xFF, 0x00, 0x0A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFE};
 //size_t LCMdimmReplaylen = 31; // die Größe von LCMdimmReplay, komischerweise ist das Array 32 byte groß aber es funktioniert nur mit 31
 uint8_t LCMBlinkerAdd [2]  PROGMEM = {0xFF, 0x00}; // Anhängsel nach dem LCMBlinker zusammenbau
 uint8_t BCcoolbeginn [7]  PROGMEM = {0x80, 0x0E, 0xE7, 0x24, 0x0E, 0x00, 0x20}; // Kühlmitteltemperatur im Bordmonitor anzeigen Anfangs-Kette
 uint8_t BCcoolend [5] PROGMEM = {0x20, 0xB0, 0x43, 0x20, 0x20}; // Kühlmitteltemperatur im Bordmonitor anzeigen Schluß-Kette (_°C__)
-// Heimleuchten Nebel und Bremslichter: 3F0FD00C000000001844000000E5FF00AA
-//Fahrertür auf
-uint8_t door_open_driver[] PROGMEM = {0x00, 0x05, 0xBF, 0x7A, 0x51};  // status Fahrertür ist auf (wenn Tür auf geht Heimleuchten einschalten)
-//00 05 BF 7A 51
 uint8_t ZV_lock[] PROGMEM = {0x3F, 0x05, 0x00, 0x0C, 0x00, 0x0B}; // Zentralverriegelung öffnen / schließen 3F05000C000B(3D)
-
-uint8_t Heimleuchten[] PROGMEM = 
-  {0x3F, 0x0F, 0xD0, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x18, 0x44, 0x00, 0x00, 0x00, 0xE5, 0xFF, 0x00}; // Lichter für Heimleuchten: Bremslicht und Nebelleuchten: 3F0FD00C000000001844000000E5FF00
-
+uint8_t Heimleuchten[] PROGMEM = {0x3F, 0x0F, 0xD0, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x18, 0x44, 0x00, 0x00, 0x00, 0xE5, 0xFF, 0x00}; // Lichter für Heimleuchten: Bremslicht und Nebelleuchten: 3F0FD00C000000001844000000E5FF00
 uint8_t Tankinhalt[5] PROGMEM = {0x3F, 0x04, 0x80, 0x0B, 0x0A};    // Tankinhalt abfragen:	3F 04 80 0B 0A (BA)
-
 uint8_t SthzEIN[5] PROGMEM = {0x3B, 0x04, 0x80, 0x41, 0x12};   // Standheizung EIN: 3B 04 80 41 12 (EC) 
 uint8_t SthzAUS[5] PROGMEM = {0x3B, 0x04, 0x80, 0x41, 0x11};   // Standheizung AUS: 3B 04 80 41 11 (EC) 
 
