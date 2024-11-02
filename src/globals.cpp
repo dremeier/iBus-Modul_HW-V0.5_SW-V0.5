@@ -155,10 +155,11 @@ bool AutomVerriegeln;        // Automatisches Verriegeln bei Geschwindigkeit > 3
 bool ZVlockDone = false;              // Flag für verriegelte Türen bei Geschwindigkeit über 30Km/h
 uint8_t BlinkcountLi = 0;           // Zähler für den linken Blinker
 uint8_t BlinkcountRe = 0;           // Zähler für den rechten Blinker
-byte LCMdimm[16];                   // Ausgelesener Dimmwert
-byte LCMBlinker[31];                // Array für das Zusammenbauen des Blinker-Befehls mit LCM-Dimmwerten
+//byte LCMdimm[16];                   // Ausgelesener Dimmwert
+byte LCMdimm;
+byte LCMBlinker[16];                // Array für das Zusammenbauen des Blinker-Befehls mit LCM-Dimmwerten
 byte BCcool[15];                    // Array für die Kühlmitteltemperatur im Bordmonitor
-uint8_t turn = 0;                   // Flag für Blinker links und rechts
+//uint8_t turn = 0;                   // Flag für Blinker links und rechts
 uint8_t LCMdimmOK = 0;              // Flag für erfolgreiche LCM-Dimmwert-Auslesung
 //bool SpiegelAnklappen;            // Flag zum Spiegelanklappen beim Schließen
 bool NaviScale;                     // Navigations-Maßstab an die Geschwindigkeit anpassen
@@ -177,8 +178,8 @@ bool heiml = false;                 // Flag für Heimleuchten (Fahrertür auf, L
 bool DvrdoorFr = false;             // Flag für Fahrertür auf
 
 /* ######################## Grenzwerte für den LDR-Wert ######################## */
-const int UPPER_THRESHOLD = 500;    // Obergrenze für den LDR-Wert (z.B. Tageslicht)
-const int LOWER_THRESHOLD = 400;    // Untergrenze für den LDR-Wert (z.B. Dämmerung)
+const int UPPER_THRESHOLD = 250;    // Obergrenze für den LDR-Wert (z.B. Tageslicht)
+const int LOWER_THRESHOLD = 200;    // Untergrenze für den LDR-Wert (z.B. Dämmerung)
 
 // ######################## Standheizungs timer
 //unsigned long lastSthzMillis = 0;  // Zum Speichern des letzten Zeitpunkts für den Timer

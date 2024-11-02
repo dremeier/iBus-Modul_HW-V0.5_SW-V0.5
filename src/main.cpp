@@ -1,14 +1,14 @@
 /*
-Sara-R5 mit Sparkfun Lib und iBusTrx Lib
+Sara-R5 mit Sparkfun Lib und modifizierter iBusTrx Lib
 Sara working Mqtt 3.11 Verbindung mit SSL/TTL zum ioBroker, GPS-Daten, Neopixels
 erster Versuch mit Ibus, HW-Version 0.5
-by AME 24/10/2024 HW 0.5
+by AME 01/11/2024 HW 0.5
 */
 
 #include <Arduino.h>
 #include <IPAddress.h>          // um IP-Adressen darzustellen
 #include "sara-lte.h"           // Funktionen für Sara-r5 LTE
-#include "globals.h"            // globale Variablen
+#include "globals.h"            // globale Variablen und Funktionen
 #include "mqtt_secrets.h"       // mqtt Zugang
 #include <SparkFun_u-blox_SARA-R5_Arduino_Library.h>      // http://librarymanager/All#SparkFun_u-blox_SARA-R5_Arduino_Library
 #include "neopixel.h"           // Funktiuonen für die Neopixel LEDs
@@ -18,7 +18,7 @@ by AME 24/10/2024 HW 0.5
 #include "math_functions.h"     // Math Funktion zum berechnen der GPS Entfernung und Winkel
 #include <IbusTrx.h>            // IbusTrx library selbst abgeändert und erweitert
 #include <Wire.h>
-#include "IbusCodes.h"          // hier sind alles Ibus-Codes und Variablen zur Configuration
+#include "IbusCodes.h"          // hier sind alle Ibus-Codes und Variablen zur Configuration
 #include "bluetooth.h"          // Bluetooth funktionen
 //#include <Snooze.h>             // Teensy Snooze Lib
 
@@ -179,24 +179,31 @@ void setup() {
   ina219.setBusRange(BRNG_16);
 
   // ######################## SARA Debugging on-Off: #####################################################
-  mySARA.enableDebugging(); // Uncomment this line to enable helpful debug messages on Serial
+  //mySARA.enableDebugging(); // Uncomment this line to enable helpful debug messages on Serial
   //------------------------------ SARA  Connect to the Operator -----------------------------------------------------
   String currentOperator = "";
   bool isConnected = false;
   // Versuche kontinuierlich sich mit einem Betreiber zu verbinden
-  while(!isConnected) {
+int retryCount = 0;
+while(!isConnected && retryCount < 20) {
     // Überprüfe, ob wir mit einem Betreiber verbunden sind
     if (mySARA.getOperator(&currentOperator) == SARA_R5_SUCCESS) {
-      debug(F("Sara connected to: "));
-      debugln(currentOperator);
-      controlLED(0, CRGB::DarkGreen, 0);
-      isConnected = true;  // Verbindung erfolgreich, beende die Schleife
+        debug(F("Sara connected to: "));
+        debugln(currentOperator);
+        controlLED(0, CRGB::DarkGreen, 0);
+        isConnected = true;  // Verbindung erfolgreich, beende die Schleife
     } else {
-      debugln(F("The SARA is not yet connected to an operator. Retrying..."));
-      controlLED(0, CRGB::LightGoldenrodYellow, 0);
-      delay(4000);  // Warte 4 Sekunden vor dem nächsten Verbindungsversuch
+        debugln(F("The SARA is not yet connected to an operator. Retrying..."));
+        controlLED(0, CRGB::LightGoldenrodYellow, 0);
+        delay(4000);  // Warte 4 Sekunden vor dem nächsten Verbindungsversuch
+        retryCount++;  // Erhöhe den Zähler
     }
-  }
+}
+
+if (!isConnected) {
+    debugln(F("Failed to connect after 20 attempts. Exiting loop."));
+    // Hier kannst du optional eine weitere Aktion oder einen Fehlerstatus setzen
+}
 
   // ************************* SARA PSD Profile ******************************************************* 
   // Deactivate the profile

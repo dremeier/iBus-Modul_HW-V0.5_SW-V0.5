@@ -191,10 +191,11 @@ extern bool AutomVerriegeln;           // Automatische Verriegelung bei Geschwin
 extern bool ZVlockDone;                    // Flag für "geschlossene" Türen bei Geschwindigkeit
 extern uint8_t BlinkcountLi;           // Zähler für Blinker links
 extern uint8_t BlinkcountRe;           // Zähler für Blinker rechts
-extern byte LCMdimm[16];               // Ausgelesener Dimmwert des LCM (Lichtsteuergerät)
-extern byte LCMBlinker[31];            // Array für das Zusammenbauen des Blinker-Befehls mit LCM-Dimmwerten
+//extern byte LCMdimm[16];               // Ausgelesener Dimmwert des LCM (Lichtsteuergerät)
+extern byte LCMdimm;
+extern byte LCMBlinker[16];            // Array für das Zusammenbauen des Blinker-Befehls mit LCM-Dimmwerten
 extern byte BCcool[15];                // Array für die Kühlmitteltemperaturanzeige im Bordmonitor
-extern uint8_t turn;                   // Flag für Blinker links oder rechts
+//extern uint8_t turn;                   // Flag für Blinker links oder rechts
 extern uint8_t LCMdimmOK;              // Flag für erfolgreich ausgelesene LCM-Dimmwerte
 //extern bool SpiegelAnklappen;          // Spiegel anklappen beim Schließen
 extern bool NaviScale;                 // Navigationsmaßstab an die Geschwindigkeit anpassen
