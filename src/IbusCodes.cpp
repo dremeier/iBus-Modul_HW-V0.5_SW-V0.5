@@ -10,6 +10,12 @@ IbusTrx ibusTrx;   // IbusTrx instance
 
 uint8_t sideMirror;
 bool sideMirrorDone;
+unsigned long lastBlinkTimeLi = 0;   // Letzter Blinkzeitpunkt für links
+unsigned long lastBlinkTimeRe = 0;   // Letzter Blinkzeitpunkt für rechts
+bool blinkLockedLi = false;          // Sperre für linkes Blinken
+bool blinkLockedRe = false;          // Sperre für rechtes Blinken
+const unsigned long blinkDelay = 1000; // Zeitabstand in ms, nach dem erneut geblinkt werden darf
+
 
 enum TurnState
 {
@@ -18,7 +24,6 @@ enum TurnState
   TURN_RIGHT = 2, // Blinker rechts
   TURN_RESET = 3  // Blinker zurückgesetzt
 };
-
 TurnState turn = TURN_OFF; // turn als TurnState deklarieren
 
 void iBusMessage()
@@ -106,7 +111,7 @@ void iBusMessage()
     }
 
     // TODO: Überprüfen - Schlüssel im Schloß , Motor aus, Tankinhalt // 44 05 bf 74 xx xx
-    if ((source == M_EWS) && (destination == M_ALL) && (message.b(0) == 0x74))
+    if ((source == M_EWS) && (destination == M_ALL) && (message.b(0) == 0x74))  // 0x74=Immobiliser status
     {
       switch (message.b(1))
       {
@@ -178,13 +183,25 @@ void iBusMessage()
           case 0x2B:
           case 0x33:
           case 0x3B:
-            BlinkcountLi++;
-            debugln(BlinkcountLi);
-            if (BlinkcountLi == 1) // Sende nur bei erstem Blinken
+            BlinkerUnblockTimer.start();          // Blinkersperre zwischen zwei Blinksignalen aufheben  
+            if (!blinkLockedLi)                   // Nur fortsetzen, wenn keine Sperre aktiv ist
             {
-              ibusTrx.write(LCMdimmReq);
-              turn = TURN_LEFT;
-              debugln("LCM Dimmer Request für linken Blinker gesendet");
+              BlinkcountLi++;
+              debugln(BlinkcountLi);
+
+              if (BlinkcountLi == 1) // Sende nur beim ersten Blinken
+              {
+                ibusTrx.write(LCMdimmReq);
+                turn = TURN_LEFT;
+                debugln("LCM Dimmer Request für linken Blinker gesendet");
+              }
+
+              if (BlinkcountLi > 2) // Sperre setzen nach 3 Blinken
+              {
+                turn = TURN_RESET;
+                blinkLockedLi = true;
+                BlinkcountLi = 0; // Zähler zurücksetzen
+              }
             }
             break;
 
@@ -195,13 +212,26 @@ void iBusMessage()
           case 0x4B:
           case 0x53:
           case 0x5B:
-            BlinkcountRe++;
-            debugln(BlinkcountRe);
-            if (BlinkcountRe == 1) // Sende nur bei erstem Blinken
+            BlinkerUnblockTimer.start();        // Blinkersperre zwischen zwei Blinksignalen aufheben 
+            if (!blinkLockedRe)                 // Nur fortsetzen, wenn keine Sperre aktiv ist
             {
-              ibusTrx.write(LCMdimmReq);
-              turn = TURN_RIGHT;
-              debugln("LCM Dimmer Request für rechten Blinker gesendet");
+              BlinkcountRe++;
+              debugln(BlinkcountRe);
+
+              if (BlinkcountRe == 1) // Sende nur beim ersten Blinken
+              {
+                ibusTrx.write(LCMdimmReq);
+                turn = TURN_RIGHT;
+                debugln("LCM Dimmer Request für rechten Blinker gesendet");
+              }
+
+              if (BlinkcountRe > 2) // Sperre setzen nach 3 Blinken
+              {
+                turn = TURN_RESET;
+                blinkLockedRe = true;
+                BlinkcountRe = 0; // Zähler zurücksetzen
+                debugln("Rechter Blinker blockiert");
+              }
             }
             break;
 
@@ -209,22 +239,8 @@ void iBusMessage()
             break;
           }
         }
-        else if (message.b(3) == 0x00) // D0 07 BF 5B 01 00 00 00  ???????????? kommt immer automatisch auf dem Bus
-        {
-          // BlinkcountLi = 0;
-          // BlinkcountRe = 0;
-          // turn = 3;  // Blinker aus
-          // debugln("Reset Counts");
-        }
-
-        // Wenn mehr als 3-mal geblinkt wurde, Blinker Aus
-        if ((BlinkcountLi > 2) || (BlinkcountRe > 2))
-        {
-          turn = TURN_RESET; // Blinker aus
-          BlinkcountLi = 0;
-          BlinkcountRe = 0;
-        }
       }
+
 
       // Abfrage des LCMdimm-Wertes im KombiInstrument, nur wenn Antwort vom LCM erhalten wird
       if ((source == M_LCM) && (destination == M_DIA) && (message.b(0) == 0xA0) && (message.b(1) == 0xC1))
@@ -258,15 +274,10 @@ void iBusMessage()
         }
 
         // Füge das einzelne LCMdimm-Byte und das LCMBlinkerAdd-Array hinzu
-        debug("LCMdimm byte: ");
-        debugln(LCMdimm, HEX);
-        LCMBlinker[sizeof(BlinkerLi)] = LCMdimm; // Setze LCMdimm an die richtige Position
+        LCMBlinker[sizeof(BlinkerLi)] = LCMdimm;  // Setze LCMdimm an die richtige Position
         memcpy(LCMBlinker + sizeof(BlinkerLi) + 1, LCMBlinkerAdd, sizeof(LCMBlinkerAdd));
-        // Setze die Länge von LCMBlinker
-        LCMBlinker[1] = sizeof(LCMBlinker) - 1; // Länge des gesamten LCMBlinker-Arrays berechnen und setzen
-        // LCMBlinker[1] = 0x0F;
-        //  Sende den fertigen Blinker-Code
-        ibusTrx.write(LCMBlinker);
+        LCMBlinker[1] = 0x0F;                     // Länge ist immer 0x0F
+        ibusTrx.write(LCMBlinker);                // Sende den fertigen Blinker-Code
       }
     }
 
@@ -297,35 +308,22 @@ void iBusMessage()
         Coolant(coolant); // Gehe in die Funktion um Die Kühlmitteltemperatur im Bordmonitor anzuzeigen
         break;
 
-      case 0x11: // Zündungs Nachricht
+      case 0x11:                        // Zündungs Nachricht
         switch (message.b(1))
         {
-        case 0x00:
-          switch (message.b(2))
-          {
-          case 0x2A: // Zündung Aus  80 05 BF 11 00 2A
-            Ignition = false;
-            debugln("Zündung AUS");
-            break;
-          }
+        case 0x00:                      // Zündung Aus  80 04 BF 11 00
+          Ignition = false;
+          debugln("Zündung AUS");
           break;
-        case 0x01:
-          switch (message.b(2))
-          {
-          case 0x2B: // Zündung Pos1  80 05 BF 11 01 2B
-            Ignition = true;
-            debugln("Zündung Pos.1");
-            break;
-          }
+          
+        case 0x01:                      // Zündung Pos.1 80 04 BF 11 01
+          Ignition = true;
+          debugln("Zündung Pos.1");
           break;
-        case 0x03:
-          switch (message.b(2))
-          {
-          case 0x29: // Zündung Pos2  80 05 BF 11 03 29
-            Ignition = true;
-            debugln("Zündung Pos.2");
-            break;
-          }
+
+        case 0x03:                      // Zündung Pos.2  80 04 BF 11 03
+          Ignition = true;
+          debugln("Zündung Pos.2");
           break;
         }
         break;
@@ -520,6 +518,18 @@ void iBusMessage()
   }
   // ############################ iBus message read ENDE #################################
 }
+
+// Blinkersperre zwischen zwei Blinksignalen aufheben 
+void BlinkerUnblock(){
+  blinkLockedLi = false; // Sperre für links aufheben
+  blinkLockedRe = false; // Sperre für rechts aufheben
+  debugln("Blinker block aufgehoben");
+  /*
+  Diese Lösung stellt sicher, dass nach drei Blinks eine Sperre aktiviert wird und erst dann
+  aufgehoben wird, wenn über den Timer eine Pause von 1000 ms erreicht ist.
+  */
+}
+
 
 // Variablen für jeden Status
 bool doorFrontLeft = false;

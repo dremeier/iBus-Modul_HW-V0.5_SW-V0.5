@@ -37,6 +37,7 @@ Timer mqttConnectTimer;       // mqtt Connect Delay
 Timer readRssiTimer;          // read Rssi
 Timer mqttdisconnectTimer;    // Intervall Disconnect from mqtt
 Timer SthzMinuteTimer;        // Minuten Timer für die Standheizung
+Timer BlinkerUnblockTimer;    // Blinkersperre zwischen zwei Blinksignalen aufheben
 
 /***************************************
 *********** SET-UP SECTION *************
@@ -293,8 +294,9 @@ if (!isConnected) {
   BluetoothToggleTimer.setTimeout(500);           // Bluetooth ein/aus
   mqttConnectTimer.setTimeout(1000);              // mqtt reConnect Delay 1 sec.
   readRssiTimer.setInterval(3000);
-  mqttdisconnectTimer.setInterval(3600000);        // (60min) intervall disconnect from mqtt, 1h = 3600000
-  SthzMinuteTimer.setInterval(60000);              // Minuten Timer für die Standheizung
+  mqttdisconnectTimer.setInterval(3600000);       // (60min) intervall disconnect from mqtt, 1h = 3600000
+  SthzMinuteTimer.setInterval(60000);             // Minuten Timer für die Standheizung
+  BlinkerUnblockTimer.setTimeout(1000);           // Blinkersperre zwischen zwei Blinksignalen aufheben 
   
   pollGpsTimer.setCallback(PollGPSData);          // PollGPSData()
   publishSaraTimer.setCallback(publishSaraData);  // 40 sec um einmalig die Sara-Daten zu senden  
@@ -305,6 +307,7 @@ if (!isConnected) {
   readRssiTimer.setCallback(readRssi);
   mqttdisconnectTimer.setCallback(mqttdisconnect);  // intervall disconnect from mqtt
   SthzMinuteTimer.setCallback(updateSthzTimer);     // Minuten Timer für die Standheizung
+  BlinkerUnblockTimer.setCallback(BlinkerUnblock);  // Blinkersperre zwischen zwei Blinksignalen aufheben 
 
   pollGpsTimer.start();                           // PollGPSData
   //publishSaraTimer.start();                     // um einmalig die Sara-Daten zu senden / wird in funktion "void mqttCommandResultCallback" aufgerufen
@@ -312,6 +315,7 @@ if (!isConnected) {
   readVoltageTimer.start();                       // Spannung- Stromsensor
   // readRssiTimer.start();
   mqttdisconnectTimer.start();                    // intervall disconnect from mqtt
+  
 
  /* ####################### GPS ########################################### */
    // Enable power for the GNSS active antenna. The SARA GPIO2 pin is used to control power for the antenna. We need to pull GPIO2 (Pin 23) high to enable the power.

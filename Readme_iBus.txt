@@ -12,23 +12,29 @@ Funkschlüssel:
 
 TODO: überprüfen
 Schlüssel im Schloß , Motor aus, Tankinhalt // 44 05 bf 74 xx xx
-44 05 bf 74 05 xx             Motor aus
-44 05 bf 74 05 00             Schlüssel stellung 1 -> 0, Corula, bis bald Cordula
-44 05 bf 74 05 05             Schlüssel stellung 1 -> 0, Andre
-44 05 bf 74 05 04             Schlüssel stellung 1 -> 0, 3. Schlüssel
-44 05 bf 74 04 04             Schlüssel stellung 0 -> 1, 3. Schlüssel
-44 05 BF 74 00 FF             abgezogen
+44 05 bf 74 04 xx           Schlüssel wird ins Schloß gesteckt
+44 05 bf 74 04 00           "gute Fahrt Cordula"
+44 05 bf 74 04 05           Andre
+44 05 bf 74 05 xx           Motor aus
+44 05 bf 74 05 00           Schlüssel stellung 1 -> 0, Corula, bis bald Cordula
+44 05 bf 74 05 05           Schlüssel stellung 1 -> 0, Andre
+44 05 bf 74 05 04           Schlüssel stellung 1 -> 0, 3. Schlüssel
+44 05 bf 74 04 04           Schlüssel stellung 0 -> 1, 3. Schlüssel
+44 05 BF 74 00 FF           abgezogen, No_key_detected Vehicle_immobilised
+BIT0, BIT1
+0x00, 0xFF // No_key_detected Vehicle_immobilised
+0x01, 0xFF // Immobilisation_deactivated Vehicle_immobilised
+0x04, 0x04 // Valid_key_detected Key_4
+0x05, 0x04 // Immobilisation_deactivated Valid_key_detected Key_4
+
 
 TODO: Codes überprüfen in Real
-80 05 BF 11 00 2A      Zündung Aus
-80 05 BF 11 01 2B      Zündung Pos.1
-80 05 BF 11 03 29      Zündung Pos.2
+80 04 BF 11 00     Zündung Aus
+80 04 BF 11 01     Zündung Pos.1
+80 04 BF 11 03     Zündung Pos.2
+80 04 BF 11 07     Zündung Pos.3 Start
 
 TODO: !Tankinhalt abfragen:	3F 04 80 0B 0A (BA)  (Antwort noch ermitteln!!!) keine Antwort
-
-44 05 bf 74 04 xx       Schlüssel wird ins Schloß gesteckt
-44 05 bf 74 04 00       "gute Fahrt Cordula"
-44 05 bf 74 04 05       Andre
 
 00 05 BF 7A 51          status Fahrertür ist auf (wenn Tür auf geht Heimleuchten einschalten)
 

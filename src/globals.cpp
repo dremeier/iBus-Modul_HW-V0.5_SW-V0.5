@@ -55,7 +55,7 @@ int gpsWinkel = 30;                 // Winkel in Grad bis neue Daten zum Server 
 
 // ######################## Mqtt Sara Variablen #######################
 String HardwareV = "HW 0.5";
-String SoftwareV = "SW 0.5.3";
+String SoftwareV = "SW 0.5.4";
 String Model_ID;
 String FirmwareV;
 String SIM_ID;
@@ -98,6 +98,9 @@ SW 0.5.2
 
 SW 0.5.3
     automatischer Navigations Zoom je nach Geschwindigkeit
+
+SW 0.5.4
+    Tippblinken mit richtigem Dimmwert für das LCM solle nun funktionieren
 
 */
 

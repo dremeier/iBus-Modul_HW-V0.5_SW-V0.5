@@ -13,6 +13,7 @@
 extern IbusTrx ibusTrx;                 // IbusTrx instance
 extern BH1750 lightMeter;
 extern Timer BluetoothToggleTimer;      // Bluetooth ein/aus
+extern Timer BlinkerUnblockTimer;       // Blinkersperre zwischen zwei Blinksignalen aufheben
 
 
 // Deklaration der Variablen als extern
@@ -39,5 +40,6 @@ void Daemmerung();                 // Funktion zur Messung der Umgebungshelligke
 void ClearToSend();
 void updateNavZoom();             // Automatischer Navigations Zoom je nach Geschwindigkeit
 void SpiegelAnklappen();          // Beim Verriegeln Seitenspiegel anklappen
+void BlinkerUnblock();            // Blinkersperre zwischen zwei Blinksignalen aufheben
 
 #endif
