@@ -134,6 +134,7 @@ void iBusMessage()
         // TODO:  ibusTrx.write(Tankinhalt);                      // 3F 04 80 0B 0A Tankinhalt abfragen (TODO: Antwort noch ermitteln!) keine ANtworterhalten, evtl. mit INPA ermitteln
         break;
 
+      /*
       case 0x04: // 44 05 bf 74 04 xx Schlüssel wird ins Schloss gesteckt
         IKEclear = true;
         debugln("Schlüssel wurde in das Zündschloss gesteckt");
@@ -152,6 +153,7 @@ void iBusMessage()
         default:
           break;
         }
+      */
         break;
 
       default:
@@ -308,12 +310,22 @@ void iBusMessage()
         Coolant(coolant); // Gehe in die Funktion um Die Kühlmitteltemperatur im Bordmonitor anzuzeigen
         break;
 
-      case 0x11:                        // Zündungs Nachricht
+      case 0x11:                        // Zündungs Status
         switch (message.b(1))
         {
         case 0x00:                      // Zündung Aus  80 04 BF 11 00
           Ignition = false;
           debugln("Zündung AUS");
+          if (driverID == "Andre")
+          {
+            ibusTrx.writeTxt("bis bald Andre"); 
+          } else if (driverID == "Cordula")
+          {
+            ibusTrx.writeTxt("bis bald Cordula");
+          }else if (driverID == "Lennox")
+          {
+            ibusTrx.writeTxt("bis bald Lennox");
+          }
           break;
           
         case 0x01:                      // Zündung Pos.1 80 04 BF 11 01
@@ -323,7 +335,18 @@ void iBusMessage()
 
         case 0x03:                      // Zündung Pos.2  80 04 BF 11 03
           Ignition = true;
+          IKEclear = true;
           debugln("Zündung Pos.2");
+          if (driverID == "Andre")
+          {
+            ibusTrx.writeTxt("gute Fahrt Andre"); 
+          } else if (driverID == "Cordula")
+          {
+            ibusTrx.writeTxt("gute Fahrt Cordula");
+          }else if (driverID == "Lennox")
+          {
+            ibusTrx.writeTxt("gute Fahrt Lennox");
+          }
           break;
         }
         break;
@@ -793,7 +816,7 @@ void SpiegelAnklappen()
 // ###############################################################################################
 // ########################### iBus Codes ########################################################
 // die checksumme muss nicht mit angegeben werden
-uint8_t cleanIKE[6] PROGMEM = {0x30, 0x05, 0x80, 0x1A, 0x30, 0x00};                                              // IKE Anzeige wird gelöscht, wichtig sonst bleibt sie immer an
+uint8_t cleanIKE[6] PROGMEM = {0x30, 0x05, 0x80, 0x1A, 0x30, 0x00};                                              // 30 05 80 1A 30 00 IKE Anzeige wird gelöscht, wichtig sonst bleibt sie immer an
 uint8_t BlinkerRe[13] PROGMEM = {0x3F, 0x0C, 0xD0, 0x0C, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};  // 3F 0F D0 0C 00 00 40 00 00 00 00 00 00
 uint8_t BlinkerLi[13] PROGMEM = {0x3F, 0x0c, 0xD0, 0x0C, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};  // 3F 0C D0 0C 00 00 80 00 00 00 00 00 00
 uint8_t BlinkerAus[13] PROGMEM = {0x3F, 0x0C, 0xD0, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; // 3F 0F D0 0C 00 00 00 00 00 00 00 00 00
