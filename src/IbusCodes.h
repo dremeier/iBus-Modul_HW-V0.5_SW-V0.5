@@ -23,8 +23,9 @@ extern uint8_t BlinkerLi[13];
 extern uint8_t BlinkerAus[13];
 extern uint8_t LCMdimmReq[4];
 extern uint8_t LCMBlinkerAdd[2];
-extern uint8_t BCcoolbeginn[7];
-extern uint8_t BCcoolend[5];
+extern byte BCcool[16];                // Array für die Kühlmitteltemperaturanzeige im Bordmonitor
+extern uint8_t BCcoolbeginn[6];
+extern uint8_t BCcoolend[7];
 extern uint8_t door_open_driver[5];
 extern uint8_t ZV_lock[6];
 extern uint8_t Heimleuchten[16];

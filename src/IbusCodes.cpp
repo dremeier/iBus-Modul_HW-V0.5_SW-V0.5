@@ -8,14 +8,13 @@
 BH1750 lightMeter; // Falls der Sensor global definiert ist
 IbusTrx ibusTrx;   // IbusTrx instance
 
-uint8_t sideMirror;
+// uint8_t sideMirror;
 bool sideMirrorDone;
-unsigned long lastBlinkTimeLi = 0;   // Letzter Blinkzeitpunkt für links
-unsigned long lastBlinkTimeRe = 0;   // Letzter Blinkzeitpunkt für rechts
-bool blinkLockedLi = false;          // Sperre für linkes Blinken
-bool blinkLockedRe = false;          // Sperre für rechtes Blinken
+unsigned long lastBlinkTimeLi = 0;     // Letzter Blinkzeitpunkt für links
+unsigned long lastBlinkTimeRe = 0;     // Letzter Blinkzeitpunkt für rechts
+bool blinkLockedLi = false;            // Sperre für linkes Blinken
+bool blinkLockedRe = false;            // Sperre für rechtes Blinken
 const unsigned long blinkDelay = 1000; // Zeitabstand in ms, nach dem erneut geblinkt werden darf
-
 
 enum TurnState
 {
@@ -25,6 +24,15 @@ enum TurnState
   TURN_RESET = 3  // Blinker zurückgesetzt
 };
 TurnState turn = TURN_OFF; // turn als TurnState deklarieren
+
+enum SideMirrorState
+{
+  MIRROR_NONE = 0,   // Kein Status
+  MIRROR_OPEN = 1,   // Spiegel ausgeklappt
+  MIRROR_CLOSE = 2,  // Spiegel eingeklappt
+  MIRROR_UNKNOWN = 3 // Unbekannter Zustand
+};
+SideMirrorState sideMirror = MIRROR_NONE; // sideMirror als SideMirrorState deklarieren
 
 void iBusMessage()
 {
@@ -56,7 +64,7 @@ void iBusMessage()
     unsigned int destination = message.destination();
     // unsigned int length = message.length();
 
-    // 00 + BF - Funkschlüssel Auf/Zu, Türen Status
+    // 00 -> BF - Funkschlüssel Auf/Zu, Türen Status
     if ((source == M_GM5) && (destination == M_ALL))
     {
       switch (message.b(0)) // erste Nachrichten Byte
@@ -64,35 +72,35 @@ void iBusMessage()
       case 0x72: // Funkschlüssel auf und zu // 00 04 BF 72 xx
         heiml = true;
         sideMirrorDone = true;
-        sideMirror = 3;
-        switch (message.b(1)) // zweite Nachrichten Byte
+        sideMirror = MIRROR_UNKNOWN;
+        switch (message.b(1)) 
         {
         case 0x22:
           ibusTrx.writeTxt("einsteigen Cordula"); // 00 04 BF 72 22 ck
           driverID = "Cordula";
-          sideMirror = 1;
+          sideMirror = MIRROR_OPEN;
           break;
         case 0x27: // Funkschlüssel Andre auf
           ibusTrx.writeTxt("einsteigen Andre");
           driverID = "Andre";
-          sideMirror = 1;
+          sideMirror = MIRROR_OPEN;
           break;
         case 0x2B: // Funkschlüssel Lennox auf
           ibusTrx.writeTxt("einsteigen Lennox");
           driverID = "Lennox";
-          sideMirror = 1;
+          sideMirror = MIRROR_OPEN;
           break;
         case 0x12:
           ibusTrx.writeTxt("Tschuess Cordula");
-          sideMirror = 0;
+          sideMirror = MIRROR_CLOSE;
           break;
         case 0x17: // FunkSchlüssel Andre zu
           ibusTrx.writeTxt("Tschuess Andre");
-          sideMirror = 0;
+          sideMirror = MIRROR_CLOSE;
           break;
         case 0x0B: // FunkSchlüssel Lennox zu
           ibusTrx.writeTxt("Tschuess Lennox");
-          sideMirror = 0;
+          sideMirror = MIRROR_CLOSE;
           break;
 
         default:
@@ -110,9 +118,10 @@ void iBusMessage()
       }
     }
 
-    // TODO: Überprüfen - Schlüssel im Schloß , Motor aus, Tankinhalt // 44 05 bf 74 xx xx
-    if ((source == M_EWS) && (destination == M_ALL) && (message.b(0) == 0x74))  // 0x74=Immobiliser status
+    // Überprüfen - Schlüssel im Schloß , Motor aus, Tankinhalt // 44 05 bf 74 xx xx
+    if ((source == M_EWS) && (destination == M_ALL) && (message.b(0) == 0x74)) // 0x74=Immobiliser status
     {
+    /*
       switch (message.b(1))
       {
       case 0x05: // 44 05 bf 74 05 xx    Motor aus
@@ -134,31 +143,32 @@ void iBusMessage()
         // TODO:  ibusTrx.write(Tankinhalt);                      // 3F 04 80 0B 0A Tankinhalt abfragen (TODO: Antwort noch ermitteln!) keine ANtworterhalten, evtl. mit INPA ermitteln
         break;
 
-      /*
-      case 0x04: // 44 05 bf 74 04 xx Schlüssel wird ins Schloss gesteckt
-        IKEclear = true;
-        debugln("Schlüssel wurde in das Zündschloss gesteckt");
-        switch (message.b(2))
-        {
-        case 0x00:
-          ibusTrx.writeTxt("gute Fahrt Cordula"); // 44 05 bf 74 04 00 Cordula
-          break;
-        case 0x04:
-          ibusTrx.writeTxt("gute Fahrt Lennox"); // 44 05 bf 74 04 04 Lennox
-          break;
-        case 0x05:
-          ibusTrx.writeTxt("gute Fahrt Andre"); // 44 05 bf 74 04 05 Andre
+        
+        case 0x04: // 44 05 bf 74 04 xx Schlüssel wird ins Schloss gesteckt
+          IKEclear = true;
+          debugln("Schlüssel wurde in das Zündschloss gesteckt");
+          switch (message.b(2))
+          {
+          case 0x00:
+            ibusTrx.writeTxt("gute Fahrt Cordula"); // 44 05 bf 74 04 00 Cordula
+            break;
+          case 0x04:
+            ibusTrx.writeTxt("gute Fahrt Lennox"); // 44 05 bf 74 04 04 Lennox
+            break;
+          case 0x05:
+            ibusTrx.writeTxt("gute Fahrt Andre"); // 44 05 bf 74 04 05 Andre
 
-          break;
-        default:
-          break;
-        }
-      */
+            break;
+          default:
+            break;
+          }
+        
         break;
 
       default:
         break;
       }
+    */
     }
 
     // wenn tippblinken true dann:
@@ -185,8 +195,8 @@ void iBusMessage()
           case 0x2B:
           case 0x33:
           case 0x3B:
-            BlinkerUnblockTimer.start();          // Blinkersperre zwischen zwei Blinksignalen aufheben  
-            if (!blinkLockedLi)                   // Nur fortsetzen, wenn keine Sperre aktiv ist
+            BlinkerUnblockTimer.start(); // Blinkersperre zwischen zwei Blinksignalen aufheben
+            if (!blinkLockedLi)          // Nur fortsetzen, wenn keine Sperre aktiv ist
             {
               BlinkcountLi++;
               debugln(BlinkcountLi);
@@ -214,8 +224,8 @@ void iBusMessage()
           case 0x4B:
           case 0x53:
           case 0x5B:
-            BlinkerUnblockTimer.start();        // Blinkersperre zwischen zwei Blinksignalen aufheben 
-            if (!blinkLockedRe)                 // Nur fortsetzen, wenn keine Sperre aktiv ist
+            BlinkerUnblockTimer.start(); // Blinkersperre zwischen zwei Blinksignalen aufheben
+            if (!blinkLockedRe)          // Nur fortsetzen, wenn keine Sperre aktiv ist
             {
               BlinkcountRe++;
               debugln(BlinkcountRe);
@@ -242,7 +252,6 @@ void iBusMessage()
           }
         }
       }
-
 
       // Abfrage des LCMdimm-Wertes im KombiInstrument, nur wenn Antwort vom LCM erhalten wird
       if ((source == M_LCM) && (destination == M_DIA) && (message.b(0) == 0xA0) && (message.b(1) == 0xC1))
@@ -276,10 +285,10 @@ void iBusMessage()
         }
 
         // Füge das einzelne LCMdimm-Byte und das LCMBlinkerAdd-Array hinzu
-        LCMBlinker[sizeof(BlinkerLi)] = LCMdimm;  // Setze LCMdimm an die richtige Position
+        LCMBlinker[sizeof(BlinkerLi)] = LCMdimm; // Setze LCMdimm an die richtige Position
         memcpy(LCMBlinker + sizeof(BlinkerLi) + 1, LCMBlinkerAdd, sizeof(LCMBlinkerAdd));
-        LCMBlinker[1] = 0x0F;                     // Länge ist immer 0x0F
-        ibusTrx.write(LCMBlinker);                // Sende den fertigen Blinker-Code
+        LCMBlinker[1] = 0x0F;      // Länge ist immer 0x0F
+        ibusTrx.write(LCMBlinker); // Sende den fertigen Blinker-Code
       }
     }
 
@@ -310,40 +319,44 @@ void iBusMessage()
         Coolant(coolant); // Gehe in die Funktion um Die Kühlmitteltemperatur im Bordmonitor anzuzeigen
         break;
 
-      case 0x11:                        // Zündungs Status
+      case 0x11: // Zündungs Status
         switch (message.b(1))
         {
-        case 0x00:                      // Zündung Aus  80 04 BF 11 00
+        case 0x00: // Zündung Aus  80 04 BF 11 00
           Ignition = false;
           debugln("Zündung AUS");
           if (driverID == "Andre")
           {
-            ibusTrx.writeTxt("bis bald Andre"); 
-          } else if (driverID == "Cordula")
+            ibusTrx.writeTxt("bis bald Andre");
+          }
+          else if (driverID == "Cordula")
           {
             ibusTrx.writeTxt("bis bald Cordula");
-          }else if (driverID == "Lennox")
+          }
+          else if (driverID == "Lennox")
           {
             ibusTrx.writeTxt("bis bald Lennox");
           }
           break;
-          
-        case 0x01:                      // Zündung Pos.1 80 04 BF 11 01
+
+        case 0x01: // Zündung Pos.1 80 04 BF 11 01
           Ignition = true;
           debugln("Zündung Pos.1");
           break;
 
-        case 0x03:                      // Zündung Pos.2  80 04 BF 11 03
+        case 0x03: // Zündung Pos.2  80 04 BF 11 03
           Ignition = true;
           IKEclear = true;
           debugln("Zündung Pos.2");
           if (driverID == "Andre")
           {
-            ibusTrx.writeTxt("gute Fahrt Andre"); 
-          } else if (driverID == "Cordula")
+            ibusTrx.writeTxt("gute Fahrt Andre");
+          }
+          else if (driverID == "Cordula")
           {
             ibusTrx.writeTxt("gute Fahrt Cordula");
-          }else if (driverID == "Lennox")
+          }
+          else if (driverID == "Lennox")
           {
             ibusTrx.writeTxt("gute Fahrt Lennox");
           }
@@ -353,7 +366,7 @@ void iBusMessage()
       }
     }
 
-    // messages sent by the steering wheel controls to the radio
+    // 50 -> 68 messages sent by the steering wheel controls to the radio
     if (source == M_MFL && destination == M_RAD)
     {
       switch (message.b(0))
@@ -542,18 +555,6 @@ void iBusMessage()
   // ############################ iBus message read ENDE #################################
 }
 
-// Blinkersperre zwischen zwei Blinksignalen aufheben 
-void BlinkerUnblock(){
-  blinkLockedLi = false; // Sperre für links aufheben
-  blinkLockedRe = false; // Sperre für rechts aufheben
-  debugln("Blinker block aufgehoben");
-  /*
-  Diese Lösung stellt sicher, dass nach drei Blinks eine Sperre aktiviert wird und erst dann
-  aufgehoben wird, wenn über den Timer eine Pause von 1000 ms erreicht ist.
-  */
-}
-
-
 // Variablen für jeden Status
 bool doorFrontLeft = false;
 bool doorFrontRight = false;
@@ -707,34 +708,33 @@ void Daemmerung()
   }
 }
 
-// Kühlmitteltemperatur im Bordmonitor anzuzeigen
+// Kühlmitteltemperatur im Bordmonitor anzeigen
 void Coolant(uint8_t coolant)
 {
-  uint8_t coolantTemp[3];     // Kühlmitteltemperatur zerlegt und in Hex abgelegt z.B. 128 => 31 32 38
-  uint8_t zerlegen = coolant; // Hilfs Variable zum zerlegen des Decimalwertes
+  uint8_t coolantTemp[3];                     // Kühlmitteltemperatur zerlegt und in Hex abgelegt z.B. 128 => 31 32 38
+  uint8_t zerlegen = coolant;                 // Hilfs Variable zum zerlegen des Decimalwertes
   // zerlegen von coolant
   for (int8_t i = 2; i >= 0; --i)
   {
-    coolantTemp[i] = (zerlegen % 10) + 0x30; // Die letzte Ziffer der Zahl +30 (in Hex 0x1E) und im Array speichern
-    zerlegen /= 10;                          // Eine Ziffer entfernen
+    coolantTemp[i] = (zerlegen % 10) + 0x30;  // Die letzte Ziffer der Zahl +30 (in Hex 0x1E) und im Array speichern
+    zerlegen /= 10;                           // Eine Ziffer entfernen
   }
-  // wenn coolant nur zwei Ziffern hat füge ein Leerzeichen in HEX voran
+  // wenn coolant nur zwei bzw. eine Ziffer hat füge Leerzeichen in HEX voran
   if (coolant < 100)
   {
     coolantTemp[0] = 0x20;
   }
-  /*  for (int i = 0; i < 3; i++)
+   if (coolant < 10)
   {
-    debug(" ");
-    debug(coolantTemp[i]);
-  }*/
-  // Zeichenkette zusammen bauen: 80 0F E7 24 0E 00 20  + coolantTemp + 20 B0 43 20 20 + cksum
+    coolantTemp[1] = 0x20;
+  }
+  // Zeichenkette zusammenbauen: 80 0F E7 24 0E 00 + coolantTemp + B0 43 20 53 45 43 20 + cksum
   memcpy(BCcool, BCcoolbeginn, sizeof(BCcoolbeginn));                                        // BCcoolbeginn in BCcool speichern
   memcpy(BCcool + sizeof(BCcoolbeginn), coolantTemp, sizeof(coolantTemp));                   // hinzufügen von coolantTemp
-  memcpy(BCcool + sizeof(BCcoolbeginn) + sizeof(coolantTemp), BCcoolend, sizeof(BCcoolend)); // hinzufügen von {0x20, 0xB0, 0x43, 0x20, 0x20}
+  memcpy(BCcool + sizeof(BCcoolbeginn) + sizeof(coolantTemp), BCcoolend, sizeof(BCcoolend)); // hinzufügen von B0 43 20 53 45 43 20 (°C)
   BCcool[1] = sizeof(BCcool) - 1;                                                            // länge der gesammten Zeichenkette berechnen und eintragen
-  // sende an den Bordmonitor im BC-Bereich anstelle von Timer 1 oder 2
-  ibusTrx.write(BCcool);
+  // sende an den Bordmonitor im BC-Bereich anstelle von Timer 2
+  ibusTrx.write(BCcool);          //z.b. Ergebnis: 80 0F E7 24 0E 00 20 39 32 B0 43 20 53 45 43 20 CF
 }
 
 // Wenn Interrup dann sende die iBus Codes
@@ -798,19 +798,31 @@ void SpiegelAnklappen()
 
   if (sideMirrorDone) // wenn mit dem Funkschlüssel auf oder zu geschlossen wurde
   {
-    if (sideMirror) // 1 = Aufgeschlossen also ausfahren
+    if (sideMirror == MIRROR_OPEN) // 1 = Aufgeschlossen also ausfahren
     {
       ibusTrx.write(ausklappenFahrer);
       ibusTrx.write(ausklappenBeifahrer);
       sideMirrorDone = false; // Spiegel ausfahren erledigt
     }
-    else if (!sideMirror)
+    else if (sideMirror == MIRROR_CLOSE)
     {
       ibusTrx.write(einklappenFahrer);
       ibusTrx.write(einklappenBeifahrer);
       sideMirrorDone = false;
     }
   }
+}
+
+// Blinkersperre zwischen zwei Blinksignalen aufheben
+void BlinkerUnblock()
+{
+  blinkLockedLi = false; // Sperre für links aufheben
+  blinkLockedRe = false; // Sperre für rechts aufheben
+  debugln("Blinker block aufgehoben");
+  /*
+  Diese Lösung stellt sicher, dass nach drei Blinks eine Sperre aktiviert wird und erst dann
+  aufgehoben wird, wenn über den Timer eine Pause von 1000 ms erreicht ist.
+  */
 }
 
 // ###############################################################################################
@@ -824,8 +836,8 @@ uint8_t LCMdimmReq[] PROGMEM = {0x3F, 0x03, 0xD0, 0x0B};                        
 // uint8_t LCMdimmReplay [32] PROGMEM = {0xA0, 0xC1, 0xC0, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0xA0, 0x00, 0x00, 0x88, 0x14, 0x84, 0xE4, 0xFF, 0x00, 0x0A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFE};
 // size_t LCMdimmReplaylen = 31; // die Größe von LCMdimmReplay, komischerweise ist das Array 32 byte groß aber es funktioniert nur mit 31
 uint8_t LCMBlinkerAdd[2] PROGMEM = {0xFF, 0x00};                                                                                   // Anhängsel nach dem LCMBlinker zusammenbau
-uint8_t BCcoolbeginn[7] PROGMEM = {0x80, 0x0E, 0xE7, 0x24, 0x0E, 0x00, 0x20};                                                      // Kühlmitteltemperatur im Bordmonitor anzeigen Anfangs-Kette
-uint8_t BCcoolend[5] PROGMEM = {0x20, 0xB0, 0x43, 0x20, 0x20};                                                                     // Kühlmitteltemperatur im Bordmonitor anzeigen Schluß-Kette (_°C__)
+uint8_t BCcoolbeginn[6] PROGMEM = {0x80, 0x0E, 0xE7, 0x24, 0x0E, 0x00};                                                      // Kühlmitteltemperatur im Bordmonitor anzeigen Anfangs-Kette
+uint8_t BCcoolend[7] PROGMEM = {0xB0, 0x43, 0x20, 0x53, 0x45, 0x43, 0x20};                                                                     // Kühlmitteltemperatur im Bordmonitor anzeigen Schluß-Kette (_°C__)
 uint8_t ZV_lock[] PROGMEM = {0x3F, 0x05, 0x00, 0x0C, 0x00, 0x0B};                                                                  // Zentralverriegelung öffnen / schließen 3F05000C000B(3D)
 uint8_t Heimleuchten[] PROGMEM = {0x3F, 0x0F, 0xD0, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x18, 0x44, 0x00, 0x00, 0x00, 0xE5, 0xFF, 0x00}; // Lichter für Heimleuchten: Bremslicht und Nebelleuchten: 3F0FD00C000000001844000000E5FF00
 uint8_t Tankinhalt[5] PROGMEM = {0x3F, 0x04, 0x80, 0x0B, 0x0A};                                                                    // Tankinhalt abfragen:	3F 04 80 0B 0A (BA)

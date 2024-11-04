@@ -194,7 +194,7 @@ extern uint8_t BlinkcountRe;           // Zähler für Blinker rechts
 //extern byte LCMdimm[16];               // Ausgelesener Dimmwert des LCM (Lichtsteuergerät)
 extern byte LCMdimm;
 extern byte LCMBlinker[16];            // Array für das Zusammenbauen des Blinker-Befehls mit LCM-Dimmwerten
-extern byte BCcool[15];                // Array für die Kühlmitteltemperaturanzeige im Bordmonitor
+
 //extern uint8_t turn;                   // Flag für Blinker links oder rechts
 extern uint8_t LCMdimmOK;              // Flag für erfolgreich ausgelesene LCM-Dimmwerte
 //extern bool SpiegelAnklappen;          // Spiegel anklappen beim Schließen
