@@ -20,11 +20,6 @@ by AME 01/11/2024 HW 0.5
 #include <Wire.h>
 #include "IbusCodes.h"          // hier sind alle Ibus-Codes und Variablen zur Configuration
 #include "bluetooth.h"          // Bluetooth funktionen
-//#include <Snooze.h>             // Teensy Snooze Lib
-
-//SnoozeUSBSerial usb;
-//SnoozeDigital digital;                  // this is the pin's wakeup driver
-//SnoozeBlock config_sleep(usb, digital); // install driver into SnoozeBlock
 
 SARA_R5 mySARA(Sara_PWR_ON, Sara_RST, 2);   // init of Sara-R5, PWR-ON-Pin, RST-Pin, maximum number of initialization attempts
 
@@ -52,7 +47,9 @@ void setup() {
 
   /* ######### PIN und UART ########################################### */
   mySARA.invertPowerPin(true);          // invert the power pin so it pulls high instead of low
-  pinMode(Sara_RI, INPUT_PULLUP);
+  pinMode(Sara_RI, INPUT_PULLUP);       // Ring Indicator Pin für Sara
+  pinMode(Sara_DTR, OUTPUT);            // Data Terminal Ready Pin, high= PSV allowed, low= no Power Saving
+  digitalWrite(Sara_DTR, LOW);         // Sara Powersaving Mode OFF
   pinMode(LED_BUILTIN,OUTPUT);
   pinMode(SthzRelais,OUTPUT);
   //pinMode(ledPin, OUTPUT);
@@ -60,7 +57,7 @@ void setup() {
   pinMode(senSta, INPUT_PULLUP);                          // pin 5 des TH3122 für Clear to send, mit einer diode von Teensy pin > TH3122 pin5
   pinMode(TH_RESET, INPUT_PULLUP);                        // Reset pin des TH3122, dieser ist high wenn TH arbeitet, mit einer diode von Teensy pin > TH3122 pin4
   //wakeup Interrupt: pin, mode, type         
-  //  digital.pinMode(TH_RESET, INPUT_PULLUP, RISING);        // SnoozeBlock, wakeup Pin. Wenn TH_RESET high wird, wird der Teensy aufgeweckt
+  digital.pinMode(TH_RESET, INPUT_PULLUP, RISING);        // SnoozeBlock, wakeup Pin. Wenn TH_RESET high wird, wird der Teensy aufgeweckt
   pinMode(sys_ctl, OUTPUT);           // BT sys_ctl Pin zum Ein/Ausschalten des Modules
   pinMode(PCM_EN, OUTPUT);            // Enable LDOs für PCM I2S Power
 
@@ -180,7 +177,7 @@ void setup() {
   ina219.setBusRange(BRNG_16);
 
   // ######################## SARA Debugging on-Off: #####################################################
-  //mySARA.enableDebugging(); // Uncomment this line to enable helpful debug messages on Serial
+  mySARA.enableDebugging(); // Uncomment this line to enable helpful debug messages on Serial
   //------------------------------ SARA  Connect to the Operator -----------------------------------------------------
   String currentOperator = "";
   bool isConnected = false;
@@ -241,6 +238,59 @@ if (!isConnected) {
   for (int i = 0; i < 10; i++){
     mySARA.bufferedPoll(); // Keep processing data from the SARA
     delay(10);
+  }
+
+  char responseBuffer[128];  // Speicher für die Antwort des Moduls
+  //AT+CEDRXS=1,4,"0101","0001"  // Aktiviert eDRX für LTE mit einer Paging Time von ca. 2,56 Sekunden
+  //char responseBuffer[128];  // Speicher für die Antwort des Moduls
+  if (mySARA.sendCustomCommandWithResponse(
+    "+CEDRXS=2,4,\"0101\",\"0001\"",  // Setzt eDRX mit spezifischem Zyklus und Paging Time Window
+    "OK",                               // Erwartete Antwort
+    responseBuffer,                     // Antwortspeicher
+    1000                                // Timeout von 1000ms
+    ) == SARA_R5_SUCCESS) {
+    debugln("..........................eDRX setting successful");
+  } else {
+      debug(".........................eDRX Command failed: ");
+      debugln(responseBuffer);  // Ausgabe der Antwort für Fehlerdiagnose
+  }
+  
+
+  //char responseBuffer[128];  // Speicher für die Antwort des Moduls
+  if (mySARA.sendCustomCommandWithResponse(
+    "+UPSV=3",  // Setzt Power Savibg mode with Pin
+    "OK",                               // Erwartete Antwort
+    responseBuffer,                     // Antwortspeicher
+    1000                                // Timeout von 1000ms
+    ) == SARA_R5_SUCCESS) {
+    debugln("..........................Power Saving setting successful");
+  } else {
+      debug(".........................Power Saving Command failed: ");
+      debugln(responseBuffer);  // Ausgabe der Antwort für Fehlerdiagnose
+  }
+
+  if (mySARA.sendCustomCommandWithResponse(
+    "+UPSMR=1",  // Aktiviert die Statusmeldungen für PSM/eDRX
+    "OK",                               // Erwartete Antwort
+    responseBuffer,                     // Antwortspeicher
+    1000                                // Timeout von 1000ms
+    ) == SARA_R5_SUCCESS) {
+    debugln("..........................Power Saving URC successful");
+  } else {
+      debug(".........................Power Saving URC failed: ");
+      debugln(responseBuffer);  // Ausgabe der Antwort für Fehlerdiagnose
+  }
+ 
+   if (mySARA.sendCustomCommandWithResponse(
+    "+UCPSMS?",  // Reads the UEs Power Saving Mode (PSM)
+    "OK",                               // Erwartete Antwort
+    responseBuffer,                     // Antwortspeicher
+    1000                                // Timeout von 1000ms
+    ) == SARA_R5_SUCCESS) {
+    debugln("..........................Reads the UEs Power successful");
+  } else {
+      debug(".........................Reads the UEs Power failed: ");
+      debugln(responseBuffer);  // Ausgabe der Antwort für Fehlerdiagnose
   }
 
   /* ##################################### SARA MQTT ########################################################### */
@@ -360,6 +410,19 @@ if (!isConnected) {
   checkNetworkRegistration();
     
   mySARA.setRegistrationCallback(registrationCallback);   // Setze den Registrierungs-Callback (Command: +CREG=2)
+
+  // Uhrzeit und Datum als String aus dem Modul auslesen
+  String currentClock = mySARA.clock();
+  
+  // Ausgabe der Uhrzeit und des Datums im Format "YY/MM/DD,HH:MM:SS-TZ"
+  if (currentClock != "") {
+      Serial.print("Aktuelle Uhrzeit und Datum: ");
+      Serial.println(currentClock);  // Gibt das Datum und die Uhrzeit aus
+  } else {
+      Serial.println("Fehler beim Auslesen von Uhrzeit und Datum");
+  }
+
+  //digitalWrite(Sara_DTR, HIGH);         // Sara Powersaving Mode ON
 } //############## Ende Setup ###############################################################
   
 

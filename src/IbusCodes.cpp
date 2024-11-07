@@ -2,19 +2,20 @@
 
 #include "IbusCodes.h"
 #include "globals.h"
-#include <BH1750.h> // GY-302 mit Licht-Sensor BH1750 für Dämmerungsschalter benötigt Wire.h
+#include <BH1750.h>   // GY-302 mit Licht-Sensor BH1750 für Dämmerungsschalter
 #include <IbusTrx.h>
+#include <Snooze.h>             // Teensy Snooze Lib - diese muss modifiziert werden siehe: https://github.com/duff2013/Snooze/issues/114
+#include "neopixel.h"           // Funktiuonen für die Neopixel LEDs
 
-BH1750 lightMeter; // Falls der Sensor global definiert ist
-IbusTrx ibusTrx;   // IbusTrx instance
+BH1750 lightMeter;    // Lichtsensor Instance
+IbusTrx ibusTrx;      // IbusTrx instance
+SnoozeUSBSerial usb;
+SnoozeDigital digital;                  // this is the pin's wakeup driver
+SnoozeBlock config_sleep(digital); // install driver into SnoozeBlock
 
-// uint8_t sideMirror;
 bool sideMirrorDone;
-unsigned long lastBlinkTimeLi = 0;     // Letzter Blinkzeitpunkt für links
-unsigned long lastBlinkTimeRe = 0;     // Letzter Blinkzeitpunkt für rechts
 bool blinkLockedLi = false;            // Sperre für linkes Blinken
 bool blinkLockedRe = false;            // Sperre für rechtes Blinken
-const unsigned long blinkDelay = 1000; // Zeitabstand in ms, nach dem erneut geblinkt werden darf
 
 enum TurnState
 {
@@ -537,7 +538,9 @@ void iBusMessage()
     {
       // debugln("TH_EN high");
       digitalWrite(TH_EN, HIGH); // TH3122 enable pin high
+      digitalWrite(Sara_DTR, LOW);         // Sara Powersaving Mode OFF
       sysSleep = false;          // SystemSleep =false -> System ist aktiv
+      FastLED.setBrightness(BRIGHTNESS);
       debugln("SystemTimer reset und System aktiv");
     }
     msSleep = millis(); // Sleep Timer reset
@@ -546,11 +549,12 @@ void iBusMessage()
   }
   else if ((millis() - msSleep) >= (SleepTime) && (!sysSleep)) // 600.000 ms = 10 Minuten
   {
+    FastLED.setBrightness(0);
     debugln("TH_EN low und System schlaeft");
-    // digitalWrite(TH_EN, LOW);         // TH3122 enable pin low, TH wird disabled und TH-LDO abgeschaltet
     sysSleep = true; // SystemSleep =true -> TH3122 System schläft, dadurch auch keine Neopixels mehr
-    delay(50);
-    //  Snooze.deepSleep( config_sleep ); // deepSleep ~20mA, sleep ~30mA, in hibernate IBUStrx does not woke up
+    //delay(100);
+    digitalWrite(TH_EN, LOW);         // TH3122 enable pin low, TH wird disabled und TH-LDO abgeschaltet
+    //Snooze.sleep( config_sleep );     // deepSleep ~20mA, sleep ~30mA, in hibernate IBUStrx does not woke up
   }
   // ############################ iBus message read ENDE #################################
 }
@@ -572,10 +576,10 @@ bool sunroof = false;
 bool trunk = false;
 bool hood = false;
 
+// Statusabfrage z.B. 00 05 BF 7A 11 3A
 void processStatusMessage(uint8_t byte1, uint8_t byte2)
 {
   // Bitmasken dekodieren und in Variablen speichern
-
   // Byte 1
   doorFrontLeft = (byte1 & 0x01) ? 1 : 0;  // Bit 0
   doorFrontRight = (byte1 & 0x02) ? 1 : 0; // Bit 1
@@ -828,21 +832,19 @@ void BlinkerUnblock()
 // ###############################################################################################
 // ########################### iBus Codes ########################################################
 // die checksumme muss nicht mit angegeben werden
-uint8_t cleanIKE[6] PROGMEM = {0x30, 0x05, 0x80, 0x1A, 0x30, 0x00};                                              // 30 05 80 1A 30 00 IKE Anzeige wird gelöscht, wichtig sonst bleibt sie immer an
-uint8_t BlinkerRe[13] PROGMEM = {0x3F, 0x0C, 0xD0, 0x0C, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};  // 3F 0F D0 0C 00 00 40 00 00 00 00 00 00
-uint8_t BlinkerLi[13] PROGMEM = {0x3F, 0x0c, 0xD0, 0x0C, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};  // 3F 0C D0 0C 00 00 80 00 00 00 00 00 00
-uint8_t BlinkerAus[13] PROGMEM = {0x3F, 0x0C, 0xD0, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; // 3F 0F D0 0C 00 00 00 00 00 00 00 00 00
-uint8_t LCMdimmReq[] PROGMEM = {0x3F, 0x03, 0xD0, 0x0B};                                                         // Diagnoseanfrage ans LCM um Helligkeitswert für IKE zu finden
-// uint8_t LCMdimmReplay [32] PROGMEM = {0xA0, 0xC1, 0xC0, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0xA0, 0x00, 0x00, 0x88, 0x14, 0x84, 0xE4, 0xFF, 0x00, 0x0A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFE};
-// size_t LCMdimmReplaylen = 31; // die Größe von LCMdimmReplay, komischerweise ist das Array 32 byte groß aber es funktioniert nur mit 31
-uint8_t LCMBlinkerAdd[2] PROGMEM = {0xFF, 0x00};                                                                                   // Anhängsel nach dem LCMBlinker zusammenbau
-uint8_t BCcoolbeginn[6] PROGMEM = {0x80, 0x0E, 0xE7, 0x24, 0x0E, 0x00};                                                      // Kühlmitteltemperatur im Bordmonitor anzeigen Anfangs-Kette
-uint8_t BCcoolend[7] PROGMEM = {0xB0, 0x43, 0x20, 0x53, 0x45, 0x43, 0x20};                                                                     // Kühlmitteltemperatur im Bordmonitor anzeigen Schluß-Kette (_°C__)
-uint8_t ZV_lock[] PROGMEM = {0x3F, 0x05, 0x00, 0x0C, 0x00, 0x0B};                                                                  // Zentralverriegelung öffnen / schließen 3F05000C000B(3D)
-uint8_t Heimleuchten[] PROGMEM = {0x3F, 0x0F, 0xD0, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x18, 0x44, 0x00, 0x00, 0x00, 0xE5, 0xFF, 0x00}; // Lichter für Heimleuchten: Bremslicht und Nebelleuchten: 3F0FD00C000000001844000000E5FF00
-uint8_t Tankinhalt[5] PROGMEM = {0x3F, 0x04, 0x80, 0x0B, 0x0A};                                                                    // Tankinhalt abfragen:	3F 04 80 0B 0A (BA)
-uint8_t SthzEIN[5] PROGMEM = {0x3B, 0x04, 0x80, 0x41, 0x12};                                                                       // Standheizung EIN: 3B 04 80 41 12 (EC)
-uint8_t SthzAUS[5] PROGMEM = {0x3B, 0x04, 0x80, 0x41, 0x11};                                                                       // Standheizung AUS: 3B 04 80 41 11 (EC)
+uint8_t cleanIKE[6] PROGMEM = {0x30, 0x05, 0x80, 0x1A, 0x30, 0x00};                                                                 // 30 05 80 1A 30 00 IKE Anzeige wird gelöscht, wichtig sonst bleibt sie immer an
+uint8_t BlinkerRe[13] PROGMEM = {0x3F, 0x0C, 0xD0, 0x0C, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};                     // 3F 0F D0 0C 00 00 40 00 00 00 00 00 00
+uint8_t BlinkerLi[13] PROGMEM = {0x3F, 0x0c, 0xD0, 0x0C, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};                     // 3F 0C D0 0C 00 00 80 00 00 00 00 00 00
+uint8_t BlinkerAus[13] PROGMEM = {0x3F, 0x0C, 0xD0, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};                    // 3F 0F D0 0C 00 00 00 00 00 00 00 00 00
+uint8_t LCMdimmReq[] PROGMEM = {0x3F, 0x03, 0xD0, 0x0B};                                                                            // Diagnoseanfrage ans LCM um Helligkeitswert für IKE zu finden
+uint8_t LCMBlinkerAdd[2] PROGMEM = {0xFF, 0x00};                                                                                    // Anhängsel nach dem LCMBlinker zusammenbau
+uint8_t BCcoolbeginn[6] PROGMEM = {0x80, 0x0E, 0xE7, 0x24, 0x0E, 0x00};                                                             // Kühlmitteltemperatur im Bordmonitor anzeigen Anfangs-Kette
+uint8_t BCcoolend[7] PROGMEM = {0xB0, 0x43, 0x20, 0x53, 0x45, 0x43, 0x20};                                                          // Kühlmitteltemperatur im Bordmonitor anzeigen Schluß-Kette (_°C__)
+uint8_t ZV_lock[] PROGMEM = {0x3F, 0x05, 0x00, 0x0C, 0x00, 0x0B};                                                                   // Zentralverriegelung öffnen / schließen 3F05000C000B(3D)
+uint8_t Heimleuchten[] PROGMEM = {0x3F, 0x0F, 0xD0, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x18, 0x44, 0x00, 0x00, 0x00, 0xE5, 0xFF, 0x00};  // Lichter für Heimleuchten: Bremslicht und Nebelleuchten: 3F0FD00C000000001844000000E5FF00
+uint8_t Tankinhalt[5] PROGMEM = {0x3F, 0x04, 0x80, 0x0B, 0x0A};                                                                     // Tankinhalt abfragen:	3F 04 80 0B 0A (BA)
+uint8_t SthzEIN[5] PROGMEM = {0x3B, 0x04, 0x80, 0x41, 0x12};                                                                        // Standheizung EIN: 3B 04 80 41 12 (EC)
+uint8_t SthzAUS[5] PROGMEM = {0x3B, 0x04, 0x80, 0x41, 0x11};                                                                        // Standheizung AUS: 3B 04 80 41 11 (EC)
 
 /*
 // Example: define the message that we want to transmit

@@ -30,7 +30,7 @@
 #define SaraCom Serial3         // Serieller Port für die Kommunikation mit Sara-R5
 #define Sara_PWR_ON 21          // Sara Power Pin mit internem Pull-up, 0,1s bis 2s LOW, dann HIGH
 #define Sara_RI 22              // Ring Indicator Pin für Sara
-#define Sara_DTR 20             // Data Terminal Ready Pin
+#define Sara_DTR 20             // Data Terminal Ready Pin, high= PSV allowed, low= no Power Saving
 #define Sara_RST 10             // Reset Pin im neuen Design für Sara-R5
 //const byte ledPin = 13;       // buildin LED
 #define SthzRelais 9            // SSR Relais für die Standheizung

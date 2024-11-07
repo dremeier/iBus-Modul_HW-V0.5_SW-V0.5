@@ -150,7 +150,7 @@ long msTimer = 0;                   // Timer für Zyklen
 long msSleep = 0;                   // Zeit für System-Schlaf
 bool sysSleep = 0;                  // Flag für Sleep-Timer
 bool th_reset = 0;                  // Testflag
-unsigned long SleepTime = 600000;   // Zeit bis zum Schlafenlegen des TH3122 (60.000 = 1 Minute)
+unsigned long SleepTime = 60000;   // Zeit bis zum Schlafenlegen des TH3122 (60.000 = 1 Minute)
 unsigned int t_clearIKE = 10000;    // Zeit in Millisekunden bis der Text im IKE gelöscht wird
 bool Tippblinken ;            // Flag zum Ein- und Ausschalten der Tipp-Blinker-Funktion
 bool AutomVerriegeln;        // Automatisches Verriegeln bei Geschwindigkeit > 30Km/h und Entriegeln bei Motor aus

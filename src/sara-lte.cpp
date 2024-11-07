@@ -44,16 +44,16 @@ void readMqttData(){
       // Processing for
       if (topic.endsWith("SthON")) {
         if (message == "1") {
-          ledState = true;
+          //ledState = true;
           SthzON = 1;  
           updateSthzTimer();       
         } else if (message == "0") {
-          ledState = false;
+          //ledState = false;
           SthzON = 0;
           updateSthzTimer();
         }
         // Update LED state based on the message
-        digitalWrite(LED_BUILTIN, ledState ? HIGH : LOW);
+        //digitalWrite(LED_BUILTIN, ledState ? HIGH : LOW);
       }
       else if (topic.endsWith("GpsWinkel")) {
         // Convert message to a float and store it
@@ -180,6 +180,7 @@ void publishSubData() {
     doc[topic1e][topic2e9] = Tippblinken;
     //doc[topic1e][topic2e10] = ??? Engine;
 
+    digitalWrite(Sara_DTR, LOW);         // Sara Powersaving Mode OFF
     // Erstellen des JSON-Strings
     String jsonData;
     serializeJsonPretty(doc, jsonData);
@@ -192,6 +193,7 @@ void publishSubData() {
     //mySARA.mqttPublishTextMsg(topic, jsonData.c_str(), 0, true);
     mySARA.mqttPublishBinaryMsg(topic, msg, msg_len, 0, true); // QoS = 0, retain = true
     debugln (".............................................................. sende Subscription daten Paket ");
+    digitalWrite(Sara_DTR, HIGH);         // Sara Powersaving Mode ON
   }
 }
 
@@ -252,7 +254,8 @@ void publishMetricsData() {
     doc[topic1d][topic2d5] = FirmwareV;
     doc[topic1d][topic2d6] = SIM_ID;
 */
-
+  	
+    digitalWrite(Sara_DTR, LOW);         // Sara Powersaving Mode OFF
     // Erstellen des JSON-Strings
     String jsonData;
     serializeJsonPretty(doc, jsonData);
@@ -264,6 +267,7 @@ void publishMetricsData() {
     //mySARA.mqttPublishTextMsg(topic, jsonData.c_str(), 0, true);
     mySARA.mqttPublishBinaryMsg(topic, msg, msg_len, 0, true); // QoS = 0, retain = true
     debugln (".............................................................. sende Metrics daten Paket ");
+    digitalWrite(Sara_DTR, HIGH);         // Sara Powersaving Mode ON
   }
 }
 
@@ -281,6 +285,7 @@ void publishSaraData() {
     doc[topic1d][topic2d5] = FirmwareV;
     doc[topic1d][topic2d6] = SIM_ID;
 
+    digitalWrite(Sara_DTR, LOW);         // Sara Powersaving Mode OFF
     // Erstellen des JSON-Strings
     String jsonData;
     serializeJsonPretty(doc, jsonData);
@@ -292,6 +297,7 @@ void publishSaraData() {
     //mySARA.mqttPublishTextMsg(topic, jsonData.c_str(), 0, true);
     mySARA.mqttPublishBinaryMsg(topic, msg, msg_len, 0, true); // QoS = 0, retain = true
     debugln (".............................................................. sende Sara daten Paket ");
+    digitalWrite(Sara_DTR, HIGH);         // Sara Powersaving Mode ON
 }
 
 // Nach PollGPSData und printGPS, werden GPS-Winkel und Distanz berechnet und nach Prüfung sende eine Json-Array an MQTT-Broker
@@ -315,6 +321,7 @@ void publishGpsData(double distance, double angle) {
     data.add(sat);
     data.add(fix);
 
+    digitalWrite(Sara_DTR, LOW);         // Sara Powersaving Mode OFF
     // Erstellen des JSON-Strings
     String jsonData;
     serializeJsonPretty(doc, jsonData);
@@ -324,6 +331,7 @@ void publishGpsData(double distance, double angle) {
     mySARA.mqttPublishBinaryMsg(topic, msg, msg_len, 0, true); // QoS = 0, retain = true
 
     debugln(".............................................................. sende GPS Daten Paket");
+    digitalWrite(Sara_DTR, HIGH);         // Sara Powersaving Mode ON
   }
 }
 
@@ -616,7 +624,7 @@ void mqttSubscribe(){
   int attempt = 0;
   bool subscribed = false;
   while(attempt < maxAttempts && !subscribed) {
-    if (mySARA.subscribeMQTTtopic(2, subscribeTopic) == SARA_R5_SUCCESS) { // QoS = 0
+    if (mySARA.subscribeMQTTtopic(2, subscribeTopic) == SARA_R5_SUCCESS) { // QoS = 2
       debugln(F("MQTT subscribe: success"));
       controlLED(1, CRGB::Green, 0);
       subscribed = true;
@@ -643,11 +651,13 @@ void updateSthzTimer() {
   if (SthzON == 1) {
     if (!SthztimerRunning) {
       // Starte den Timer und die Standheizung
+      digitalWrite(TH_EN, HIGH); // TH3122 enable pin high
       SthztimerRunning = true;
-      ibusTrx.write(SthzEIN);
       digitalWriteFast(SthzRelais, HIGH);
+      digitalWrite(LED_BUILTIN, HIGH);
       debugln("Standheizung ON");
       SthzMinuteTimer.start();
+      ibusTrx.write(SthzEIN);
     } else if (remT > 0) {
       // Reduziere verbleibende Zeit, wenn Timer bereits läuft
       remT--;
@@ -656,24 +666,28 @@ void updateSthzTimer() {
     
     // Wenn die verbleibende Zeit abgelaufen ist
     if (remT == 0) {
+      digitalWrite(TH_EN, HIGH); // TH3122 enable pin high
       SthzON = 0;
       remT = SthzRuntime;
       SthztimerRunning = false;
-      ibusTrx.write(SthzAUS);
       digitalWriteFast(SthzRelais, LOW);
+      digitalWrite(LED_BUILTIN, LOW);
       SthzMinuteTimer.stop();
       publishSubData();
       debugln("Standheizung AUS, Timer bei 0 Minuten.");
+      ibusTrx.write(SthzAUS);
     }
   } else if (SthztimerRunning) {
     // Wenn Standheizung ausgeschaltet ist und Timer noch läuft
+    digitalWrite(TH_EN, HIGH); // TH3122 enable pin high
     remT = SthzRuntime;
     SthztimerRunning = false;
     SthzON = 0;
-    ibusTrx.write(SthzAUS);
     digitalWriteFast(SthzRelais, LOW);
+    digitalWrite(LED_BUILTIN, LOW);
     SthzMinuteTimer.stop();
     debugln("Standheizung AUS, Timer auf 25 Minuten zurückgesetzt.");
+    ibusTrx.write(SthzAUS);
   }
 }
 

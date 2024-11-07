@@ -9,9 +9,14 @@
 #include <IbusTrx.h>                    // IbusTrx library selbst abgeändert und erweitert
 #include <BH1750.h> 
 #include "timer.h"                      // Timer Lib um Delay zu vermeiden
+#include <Snooze.h>             // Teensy Snooze Lib
 
 extern IbusTrx ibusTrx;                 // IbusTrx instance
-extern BH1750 lightMeter;
+extern BH1750 lightMeter;               // Lichtsensor Instance
+extern SnoozeUSBSerial usb;
+extern SnoozeDigital digital;                  // this is the pin's wakeup driver
+extern SnoozeBlock config_sleep; // install driver into SnoozeBlock
+
 extern Timer BluetoothToggleTimer;      // Bluetooth ein/aus
 extern Timer BlinkerUnblockTimer;       // Blinkersperre zwischen zwei Blinksignalen aufheben
 
