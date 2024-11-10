@@ -400,6 +400,7 @@ if (!isConnected) {
   EEPROM_readAnything(sizeof(int) + sizeof(gpsWinkel) + sizeof(AutomVerriegeln) + sizeof(SpiegAnkl), NaviScale);
   EEPROM_readAnything(sizeof(int) + sizeof(gpsWinkel) + sizeof(AutomVerriegeln) + sizeof(SpiegAnkl) + sizeof(NaviScale), BcResetten);
   EEPROM_readAnything(sizeof(int) + sizeof(gpsWinkel) + sizeof(AutomVerriegeln) + sizeof(SpiegAnkl) + sizeof(NaviScale) + sizeof(BcResetten), Tippblinken);
+  EEPROM_readAnything(sizeof(int) + sizeof(gpsWinkel) + sizeof(AutomVerriegeln) + sizeof(SpiegAnkl) + sizeof(NaviScale) + sizeof(BcResetten) + sizeof(Tippblinken), usLight);
   if (gpsAbstand < 10){ gpsAbstand =10;}
 
   // Holen von internen Sara Informationen
@@ -407,8 +408,10 @@ if (!isConnected) {
   FirmwareV = String(mySARA.getFirmwareVersion());
   SIM_ID = String(mySARA.getCCID());
 
-  checkNetworkRegistration();
-    
+  //checkNetworkRegistration(); wird ersetzt durch EPS-Registrierungs-Callback
+  
+  // EPS-Registrierungs-Callback festlegen
+  mySARA.setEpsRegistrationCallback(epsRegistrationCallback);  
   mySARA.setRegistrationCallback(registrationCallback);   // Setze den Registrierungs-Callback (Command: +CREG=2)
 
   // Uhrzeit und Datum als String aus dem Modul auslesen

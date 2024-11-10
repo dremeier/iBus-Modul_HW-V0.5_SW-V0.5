@@ -136,6 +136,7 @@ bool prevSpiegelAnklappen;
 bool prevBcResetten;
 bool prevNaviScale;
 float prevstrom;
+bool prevusLight;                  // Flag für US-Standlicht
 
 // MQTT static or subscribed values:
 String myClientID = "BMW7er";       // Mqtt Client ID
@@ -150,24 +151,23 @@ long msTimer = 0;                   // Timer für Zyklen
 long msSleep = 0;                   // Zeit für System-Schlaf
 bool sysSleep = 0;                  // Flag für Sleep-Timer
 bool th_reset = 0;                  // Testflag
-unsigned long SleepTime = 60000;   // Zeit bis zum Schlafenlegen des TH3122 (60.000 = 1 Minute)
+unsigned long SleepTime = 60000;    // Zeit bis zum Schlafenlegen des TH3122 (60.000 = 1 Minute)
 unsigned int t_clearIKE = 10000;    // Zeit in Millisekunden bis der Text im IKE gelöscht wird
-bool Tippblinken ;            // Flag zum Ein- und Ausschalten der Tipp-Blinker-Funktion
-bool AutomVerriegeln;        // Automatisches Verriegeln bei Geschwindigkeit > 30Km/h und Entriegeln bei Motor aus
-//bool MotorOff = false;              // Flag für Motor aus (Schlüssel aus dem Zündschloss)
-bool ZVlockDone = false;              // Flag für verriegelte Türen bei Geschwindigkeit über 30Km/h
+bool Tippblinken ;                  // Flag zum Ein- und Ausschalten der Tipp-Blinker-Funktion
+bool AutomVerriegeln;               // Automatisches Verriegeln bei Geschwindigkeit > 30Km/h und Entriegeln bei Motor aus
+bool ZVlockDone = false;            // Flag für verriegelte Türen bei Geschwindigkeit über 30Km/h
 uint8_t BlinkcountLi = 0;           // Zähler für den linken Blinker
 uint8_t BlinkcountRe = 0;           // Zähler für den rechten Blinker
-//byte LCMdimm[16];                   // Ausgelesener Dimmwert
-byte LCMdimm;
+byte LCMdimm;                       // Byte für den Dimmwert des LCM
 byte LCMBlinker[16];                // Array für das Zusammenbauen des Blinker-Befehls mit LCM-Dimmwerten
 byte BCcool[15];                    // Array für die Kühlmitteltemperatur im Bordmonitor
-//uint8_t turn = 0;                   // Flag für Blinker links und rechts
 uint8_t LCMdimmOK = 0;              // Flag für erfolgreiche LCM-Dimmwert-Auslesung
-//bool SpiegelAnklappen;            // Flag zum Spiegelanklappen beim Schließen
 bool NaviScale;                     // Navigations-Maßstab an die Geschwindigkeit anpassen
 bool BcResetten;                    // Tagesverbrauch-Durchschnitt automatisch zurücksetzen
 bool SpiegAnkl;                     // Beim Abschließen Spiegel automatisch anklappen
+bool usLight;                       // Flag für US-Standlicht
+bool usLightTrigger;                // zum einmaligen Umschlaten des Zustandes
+byte usLightByte21;
 
 
 /* ############################### Lichtsensor ################################ */

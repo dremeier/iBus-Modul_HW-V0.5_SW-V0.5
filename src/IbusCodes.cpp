@@ -17,6 +17,7 @@ bool sideMirrorDone;
 bool blinkLockedLi = false;            // Sperre für linkes Blinken
 bool blinkLockedRe = false;            // Sperre für rechtes Blinken
 
+
 enum TurnState
 {
   TURN_OFF = 0,   // Blinker aus
@@ -293,6 +294,26 @@ void iBusMessage()
       }
     }
 
+
+    // US - Tagfahrlicht ein/aus schalten. Hierzu muss das Byte 21 in Block 08 des LCM codiert werden.
+    if (usLightTrigger)
+    {
+      usLightTrigger = false;
+      if ((source == M_LCM) && (destination == M_DIA) && (message.b(0) == 0xA0) && (message.b(1) == 0x00))
+      {
+          debugln("LCM Antwort US-Tagfahrlicht erkannt");
+          uint8_t LcmBlock8[32];                                    // Erstelle ein Array zur Speicherung von message.b(0) bis message.b(32)
+          for (uint8_t i = 1; i < 33; i++) {                        // Fülle das Array mit den Werten aus message.b(i)
+              LcmBlock8[i-1] = message.b(i);
+          }
+          LcmBlock8[20] = usLightByte21;                            // Ersetze message.b(21) durch usLightByte21
+          uint8_t finalMessage[37] = {0x3F, 0x23, 0xD0, 0x09};      // Erstelle den finalen Nachrichtenblock mit dem Präfix 3F 23 D0 09
+          memcpy(finalMessage + 4, LcmBlock8, 32);                  // Kopiere das korrigierte Array in den finalen Nachrichtenblock
+          ibusTrx.write(finalMessage);
+      }
+    }
+    
+
     // 80 -> BF Geschwindigkeit, RPM, OutTemp, CoolantTemp
     if ((source == M_IKEC) && (destination == M_ALL))
     {
@@ -553,7 +574,7 @@ void iBusMessage()
     debugln("TH_EN low und System schlaeft");
     sysSleep = true; // SystemSleep =true -> TH3122 System schläft, dadurch auch keine Neopixels mehr
     //delay(100);
-    digitalWrite(TH_EN, LOW);         // TH3122 enable pin low, TH wird disabled und TH-LDO abgeschaltet
+    //digitalWrite(TH_EN, LOW);         // TH3122 enable pin low, TH wird disabled und TH-LDO abgeschaltet
     //Snooze.sleep( config_sleep );     // deepSleep ~20mA, sleep ~30mA, in hibernate IBUStrx does not woke up
   }
   // ############################ iBus message read ENDE #################################

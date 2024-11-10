@@ -121,6 +121,24 @@ void readMqttData(){
         } else if (message == "0") {
           debugln ("Sara alive");
         }
+      } 
+      else if (topic.endsWith("usLight")) {   
+        if (message == "1") {
+          usLight = 1;
+          usLightByte21 = 0x28; // US-Tagfahrlicht ein
+          debugln("US-Standlicht EIN");
+        } else if (message == "0") {
+          usLight = 0;
+          usLightByte21 = 0x00; // US-Tagfahrlicht aus
+          debugln ("US-Standlicht AUS");
+        }
+        if (prevusLight != usLight)
+        {
+          usLightTrigger = true;
+          static uint8_t requestStatus[] = {0x3F, 0x04, 0xD0, 0x08, 0x00};
+          ibusTrx.write (requestStatus);
+        }
+        
       }
     }
     controlLED(1, CRGB::Green, 0);
@@ -136,12 +154,13 @@ void publishSubData() {
   // Prüfen, ob sich eine der Variablen geändert hat
   if (SthzON != prevSthzON || gpsAbstand != prevgpsAbstand || gpsWinkel != prevgpsWinkel ||
    stat != prevStat || prevAutomVerriegeln != AutomVerriegeln || prevSpiegelAnklappen != SpiegAnkl ||
-   prevNaviScale != NaviScale || prevBcResetten != BcResetten || prevTippblinken != Tippblinken) {
+   prevNaviScale != NaviScale || prevBcResetten != BcResetten || prevTippblinken != Tippblinken ||
+   prevusLight != usLight) {
 
     // Haben sich die Daten geändert schreibe sie in´s EEprom, die Daten werden im Setup wieder eingelesen      
     if (gpsAbstand != prevgpsAbstand || gpsWinkel != prevgpsWinkel ||
       stat != prevStat || prevAutomVerriegeln != AutomVerriegeln || prevSpiegelAnklappen != SpiegAnkl ||
-      prevNaviScale != NaviScale || prevBcResetten != BcResetten || prevTippblinken != Tippblinken){
+      prevNaviScale != NaviScale || prevBcResetten != BcResetten || prevTippblinken != Tippblinken || prevusLight != usLight){
       EEPROM_writeAnything(0, gpsAbstand);
       EEPROM_writeAnything(sizeof(int), gpsWinkel);
       EEPROM_writeAnything(sizeof(int) + sizeof(gpsWinkel), AutomVerriegeln);
@@ -149,6 +168,7 @@ void publishSubData() {
       EEPROM_writeAnything(sizeof(int) + sizeof(gpsWinkel) + sizeof(AutomVerriegeln) + sizeof(SpiegAnkl), NaviScale);
       EEPROM_writeAnything(sizeof(int) + sizeof(gpsWinkel) + sizeof(AutomVerriegeln) + sizeof(SpiegAnkl) + sizeof(NaviScale), BcResetten);
       EEPROM_writeAnything(sizeof(int) + sizeof(gpsWinkel) + sizeof(AutomVerriegeln) + sizeof(SpiegAnkl) + sizeof(NaviScale) + sizeof(BcResetten), Tippblinken);
+      EEPROM_writeAnything(sizeof(int) + sizeof(gpsWinkel) + sizeof(AutomVerriegeln) + sizeof(SpiegAnkl) + sizeof(NaviScale) + sizeof(BcResetten) + sizeof(Tippblinken), usLight);
       debugln("........................................... Schreibe ins EEPROM weil sich Variablen geändert haben");
     }
 
@@ -162,7 +182,7 @@ void publishSubData() {
     prevNaviScale = NaviScale;
     prevBcResetten = BcResetten;
     prevTippblinken = Tippblinken;
-
+    prevusLight = usLight;
 
       // Set a callback to process the results of the PSD Action
     //mySARA.setPSDActionCallback(&processPSDAction);
@@ -178,7 +198,7 @@ void publishSubData() {
     doc[topic1e][topic2e7] = NaviScale;
     doc[topic1e][topic2e8] = BcResetten;
     doc[topic1e][topic2e9] = Tippblinken;
-    //doc[topic1e][topic2e10] = ??? Engine;
+    doc[topic1e][topic2e10] = usLight;
 
     digitalWrite(Sara_DTR, LOW);         // Sara Powersaving Mode OFF
     // Erstellen des JSON-Strings
@@ -189,8 +209,7 @@ void publishSubData() {
     size_t msg_len = jsonData.length();
     // Publizieren des JSON-Strings
     String topic = myClientID + "/JSonData/Subs"; // Nutzen Sie hier einen geeigneten Topic
-    //String topic = myClientID + "/subscribe/Tblink";                     // Um ein neuen Topic zu senden
-    //mySARA.mqttPublishTextMsg(topic, jsonData.c_str(), 0, true);
+    //String topic = myClientID + "/subscribe/usLight";                     // Um ein neuen Topic zu senden
     mySARA.mqttPublishBinaryMsg(topic, msg, msg_len, 0, true); // QoS = 0, retain = true
     debugln (".............................................................. sende Subscription daten Paket ");
     digitalWrite(Sara_DTR, HIGH);         // Sara Powersaving Mode ON
@@ -561,6 +580,7 @@ void mqttdisconnect(){
   }
 }
 
+/*
 void checkNetworkRegistration() {
   //debugln("##########..............###########..............Check Rregistation Status.");
   SARA_R5_registration_status_t status = mySARA.registration(); //Command: +CEREG?
@@ -577,7 +597,60 @@ void checkNetworkRegistration() {
     debugln("Registration status unknown.");
   }
 }
+*/
 
+
+// EPS-Registrierungs-Callback-Funktion (Command: +CEREG=2)
+void epsRegistrationCallback(SARA_R5_registration_status_t status, unsigned int tac, unsigned int ci, int Act) {
+  debugln("##########.......................................Check EPS Registration (+CEREG).");
+
+  switch (status) {
+    case SARA_R5_REGISTRATION_NOT_REGISTERED:
+      debugln("Callback: Not registered with the network.");
+      break;
+    case SARA_R5_REGISTRATION_SEARCHING:
+      debugln("Callback: Searching for network...");
+      break;
+    case SARA_R5_REGISTRATION_HOME:
+      debugln("Callback: Registered on home network.");
+      break;
+    case SARA_R5_REGISTRATION_ROAMING:
+      debugln("Callback: Registered on roaming network.");
+      break;
+    case SARA_R5_REGISTRATION_UNKNOWN:
+      debugln("Callback: Unknown registration status.");
+      break;
+    case SARA_R5_REGISTRATION_HOME_SMS_ONLY:
+      debugln("Callback: Registered on home network (SMS only).");
+      break;
+    case SARA_R5_REGISTRATION_ROAMING_SMS_ONLY:
+      debugln("Callback: SMS-Only on roaming network.");
+      activateInternet();
+      break;
+    case SARA_R5_REGISTRATION_EMERGENCY_SERV_ONLY:
+      debugln("Callback: Registered for emergency services only.");
+      break;
+    case SARA_R5_REGISTRATION_HOME_CSFB_NOT_PREFERRED:
+      debugln("Callback: Registered on home network (CSFB not preferred).");
+      break;
+    case SARA_R5_REGISTRATION_ROAMING_CSFB_NOT_PREFERRED:
+      debugln("Callback: Registered on roaming network (CSFB not preferred).");
+      break;
+    default:
+      debugln("Callback: Registration status unknown.");
+      break;
+  }
+
+  // Ausgabe der zusätzlichen Parameter
+  debug("TAC: ");
+  debugln(tac);
+  debug("CI: ");
+  debugln(ci);
+  debug("Access Technology (Act): ");
+  debugln(Act);
+}
+
+/*
 // Callback-Funktion zur Verarbeitung des Registrierungsstatus (Command: +CREG=2)
 void registrationCallback(SARA_R5_registration_status_t status, unsigned int lac, unsigned int ci, int Act) {
   debugln("##########.......................................Check Rregistation (+CREG).");
@@ -607,6 +680,61 @@ void registrationCallback(SARA_R5_registration_status_t status, unsigned int lac
   debug("Access Technology (Act): ");
   debugln(Act);
 }
+*/
+
+// Callback-Funktion zur Verarbeitung des Registrierungsstatus (Command: +CREG=2)
+void registrationCallback(SARA_R5_registration_status_t status, unsigned int lac, unsigned int ci, int Act) {
+  debugln("##########.......................................Check Registration (+CREG).");
+
+  switch (status) {
+    case SARA_R5_REGISTRATION_NOT_REGISTERED:
+      debugln("Callback: Not registered with the network.");
+      activateInternet();
+      break;
+    case SARA_R5_REGISTRATION_SEARCHING:
+      debugln("Callback: Searching for network...");
+      break;
+    case SARA_R5_REGISTRATION_HOME:
+      debugln("Callback: Registered on home network.");
+      break;
+    case SARA_R5_REGISTRATION_ROAMING:
+      debugln("Callback: Registered on roaming network.");
+      break;
+    case SARA_R5_REGISTRATION_UNKNOWN:// +CREG: 4 
+      debugln("Callback: Unknown registration status.");
+      activateInternet();
+      break;
+    case SARA_R5_REGISTRATION_HOME_SMS_ONLY:
+      debugln("Callback: Registered on home network (SMS only).");
+      activateInternet();
+      break;
+    case SARA_R5_REGISTRATION_ROAMING_SMS_ONLY:// +CREG: 7 
+      debugln("Callback: SMS-Only on roaming network.");
+      activateInternet();
+      break;
+    case SARA_R5_REGISTRATION_EMERGENCY_SERV_ONLY:
+      debugln("Callback: Registered for emergency services only.");
+      break;
+    case SARA_R5_REGISTRATION_HOME_CSFB_NOT_PREFERRED:
+      debugln("Callback: Registered on home network (CSFB not preferred).");
+      break;
+    case SARA_R5_REGISTRATION_ROAMING_CSFB_NOT_PREFERRED:
+      debugln("Callback: Registered on roaming network (CSFB not preferred).");
+      break;
+    default:
+      debugln("Callback: Registration status unknown.");
+      break;
+  }
+
+  // Ausgabe der zusätzlichen Parameter
+  debug("LAC: ");
+  debugln(lac);
+  debug("CI: ");
+  debugln(ci);
+  debug("Access Technology (Act): ");
+  debugln(Act);
+}
+
 
 void readRssi(){
   int rssi = mySARA.rssi();

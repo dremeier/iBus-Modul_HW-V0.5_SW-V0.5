@@ -1,3 +1,5 @@
+Jedes Netzwerk (K-Bus, I-Bus und D-Bus) überträgt Daten mit einer Baudrate von 9600 Bit pro Sekunde. Das Kommunikationsprotokoll hat 8 Daten-Bits, 1 Stop-Bit und gerade Parität (even).
+
 Implementierte Codes (alle ohne CK):
 
 Funkschlüssel:
@@ -57,6 +59,7 @@ D0 07 BF 5B 01 00 00 00  ???????????? kommt immer automatisch auf dem Bus
              D0 23 3F A0     C1 C0 80 20 00 00 80 40 00 A3 00 00 00 00 00 10 FF 00 00 00 00 00 00 00 00 00 00 00 00 FD 4E FE 
              D0 23 3F A0     C1 C0 A0 20 00 03 AE 58 0E A2 00 00 00 00 00 24 FF 00 00 00 00 00 00 00 00 00 00 00 00 FD 4F FE 
              D0 23 3F A0     C1 C0 20 20 00 03 2E 18 0E A3 00 00 00 00 00 C1 FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FE 
+                                                                           |-> Byte 16, message.b(16)
 
 Blinker-Code zusammenbau:
 3F 1E D0 0C 00 00 40 00 00 00 00 00 00 C1 C0 20 20 00 03 2E 18 0E A3 00 00 00 00 00 C1 FF 00 1A
@@ -101,3 +104,8 @@ speed =90 ->>>      80 05 BF 18 2D 18   erwarte: B0 05 7F AA 10 10 60  NaviZomm1
 speed =120 ->>>     80 05 BF 18 3C 18   erwarte: B0 05 7F AA 10 12 62  NaviZomm5km
 
 
+### prüfung US-Tagfahrlicht
+Über ioBroker 1 oder 0 senden
+-> Modul fragt den Block ab: 3F 04 D0 08 00
+<- Antwort:                 D0 23 3F A0 00 86 00 08 01 00 64 74 00 00 00 00 00 00 00 B0 00 55 40 90 00 00 0B 00 00 00 00 28 1F 00 00 00
+-> Modul ersetzt Byte 21:   3F 23 D0 09 00 86 00 08 01 00 64 74 00 00 00 00 00 00 00 B0 00 55 40 90 28 00 0B 00 00 00 00 28 1F 00 00 00 (7B)

@@ -72,6 +72,7 @@ void mqttdisconnect();
 void mqttSubscribe();                                       // Subscribe to the channel topic
 void updateSthzTimer();                                     // Timer-Funktion für Standheizung aufrufen
 void checkNetworkRegistration();                            // Überprüfen des Netzwerkstatus
+void epsRegistrationCallback(SARA_R5_registration_status_t status, unsigned int tac, unsigned int ci, int Act);
 void registrationCallback(SARA_R5_registration_status_t status, unsigned int lac, unsigned int ci, int Act);
 void readRssi();
 void activateInternet();

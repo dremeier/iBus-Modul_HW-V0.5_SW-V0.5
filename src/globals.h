@@ -88,7 +88,7 @@ const byte TH_RESET = 4;        // Reset output from Melexis TH3122 PIN14.
 #define topic2e7 "NaviScale"     // Navigation Maßstab anpassen (NaviScale)
 #define topic2e8 "BcReset"       // Bordcomputer zurücksetzen (BcReset)
 #define topic2e9 "TipBlink"      // Tippblinken (TipBlink)
-#define topic2e10 "Engine"       // Motorstatus (Engine)
+#define topic2e10 "usLight"       // US-Standlicht
 
 // ####################### Externe globale Variablen #######################
 // Diese Variablen speichern den aktuellen Zustand von verschiedenen Fahrzeugwerten
@@ -165,6 +165,7 @@ extern bool prevNaviScale;
 extern bool prevBcResetten;
 extern bool prevTippblinken;
 extern float prevstrom; 
+extern bool prevusLight;                  // Flag für US-Standlicht
 
 // MQTT-spezifische Variablen
 extern String myClientID;          // MQTT-Client-ID
@@ -200,6 +201,9 @@ extern uint8_t LCMdimmOK;              // Flag für erfolgreich ausgelesene LCM-
 //extern bool SpiegelAnklappen;          // Spiegel anklappen beim Schließen
 extern bool NaviScale;                 // Navigationsmaßstab an die Geschwindigkeit anpassen
 extern bool BcResetten;                // Durchschnittsverbrauch automatisch zurücksetzen
+extern bool usLight;                  // Flag für US-Standlicht
+extern bool usLightTrigger;
+extern byte usLightByte21;
 
 // ######################## Helligkeitssensor und Heimleuchten ######################
 extern const int NUM_READINGS;
