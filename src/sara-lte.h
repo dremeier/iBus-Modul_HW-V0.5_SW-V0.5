@@ -63,6 +63,8 @@ void publishSaraData();                                     // MQTT senden der S
 void publishGpsData(double distance, double angle);         // MQTT senden von GPS Daten
 void PollGPSData();                                         // Anfordern der GPS-Daten
 void printGPS(void);                                        // Auslesen der GPS-Variablen
+void enableGPS();
+void disableGPS();
 void processMQTTcommandResult(int command, int result);     // MQTT-Befehlsergebnis verarbeiten
 void processPSDAction(int result, IPAddress ip);            // Holen der IP-Adresse
 void pingResponseCallback(int retry, int p_size, String remote_hostname, IPAddress ip, int ttl, long rtt); // Auswertung des Pings

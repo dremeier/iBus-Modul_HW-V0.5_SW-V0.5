@@ -33,6 +33,7 @@ Timer readRssiTimer;          // read Rssi
 Timer mqttdisconnectTimer;    // Intervall Disconnect from mqtt
 Timer SthzMinuteTimer;        // Minuten Timer für die Standheizung
 Timer BlinkerUnblockTimer;    // Blinkersperre zwischen zwei Blinksignalen aufheben
+Timer BcResettenTimer;        // nach ablauf des Timers wird die Consumption1 resettet
 
 /***************************************
 *********** SET-UP SECTION *************
@@ -328,13 +329,14 @@ if (!isConnected) {
   prevDriverID = driverID;
   prevIgnition = Ignition;
   prevBat = bat;
-  prevAvrFuel = avrFuel;
-  prevAvrSpeed = avrSpeed;
+  prevconsumption1 = consumption1;
+  prevavgSpeed = avgSpeed;
   prevFuel = fuel;
   prevSpeed = speed;
   prevRpm = rpm;
   prevRemT = remT;
   prevStat = stat;
+  prevusLight = usLight;
 
   // Set Timer in milliseconds  ++++++++++++++++++ TIMER ++++++++++++++++++++++++++++
   pollGpsTimer.setInterval(15000);                // PollGPSData, hole alle 15sec. GPS daten
@@ -347,6 +349,7 @@ if (!isConnected) {
   mqttdisconnectTimer.setInterval(3600000);       // (60min) intervall disconnect from mqtt, 1h = 3600000
   SthzMinuteTimer.setInterval(60000);             // Minuten Timer für die Standheizung
   BlinkerUnblockTimer.setTimeout(1000);           // Blinkersperre zwischen zwei Blinksignalen aufheben 
+  BcResettenTimer.setTimeout(10800000);           // reset consumptrion1
   
   pollGpsTimer.setCallback(PollGPSData);          // PollGPSData()
   publishSaraTimer.setCallback(publishSaraData);  // 40 sec um einmalig die Sara-Daten zu senden  
@@ -358,6 +361,7 @@ if (!isConnected) {
   mqttdisconnectTimer.setCallback(mqttdisconnect);  // intervall disconnect from mqtt
   SthzMinuteTimer.setCallback(updateSthzTimer);     // Minuten Timer für die Standheizung
   BlinkerUnblockTimer.setCallback(BlinkerUnblock);  // Blinkersperre zwischen zwei Blinksignalen aufheben 
+  BcResettenTimer.setCallback(resetConsumption1);   // reset consumptrion1
 
   pollGpsTimer.start();                           // PollGPSData
   //publishSaraTimer.start();                     // um einmalig die Sara-Daten zu senden / wird in funktion "void mqttCommandResultCallback" aufgerufen
@@ -370,7 +374,8 @@ if (!isConnected) {
  /* ####################### GPS ########################################### */
    // Enable power for the GNSS active antenna. The SARA GPIO2 pin is used to control power for the antenna. We need to pull GPIO2 (Pin 23) high to enable the power.
   mySARA.setGpioMode(mySARA.GPIO2, mySARA.GPIO_OUTPUT, 1);
-
+  // TODO: GPS enable and disable prüfen, sowie Utime=1,1 error
+  //disableGPS();
   // From the u-blox SARA-R5 Positioning Implementation Application Note UBX-20012413 - R01
   // To enable the PPS output we need to:
   // Configure GPIO6 for TIME_PULSE_OUTPUT - .init does this
@@ -389,6 +394,7 @@ if (!isConnected) {
   
   // Set the UTIME mode to pulse-per-second output using a best effort from GNSS and LTE
   mySARA.setUtimeMode(); // Use defaults (mode = SARA_R5_UTIME_MODE_PPS, sensor = SARA_R5_UTIME_SENSOR_GNSS_LTE)
+  //mySARA.setUtimeMode(SARA_R5_UTIME_MODE_PPS, SARA_R5_UTIME_SENSOR_GNSS_LTE);
 
   mySARA.gpsEnableRmc(); // Enable GPRMC messages
 

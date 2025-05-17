@@ -221,8 +221,8 @@ void publishSubData() {
 void publishMetricsData() {
   // Prüfen, ob sich eine der Variablen geändert hat
   if ( kwassertemp != prevKwassertemp || outTemp != prevAussentemp || ZVlocked != prevZVlocked ||
-    driverID != prevDriverID || Ignition != prevIgnition || (fabs(bat - prevBat) >= 0.2)  || avrFuel != prevAvrFuel ||
-    avrSpeed != prevAvrSpeed || fuel != prevFuel || (fabs(speed - prevSpeed) >= 5) ||             //unter Verwendung der fabs-Funktion aus der cmath-Bibliothek, die den absoluten Wert einer Zahl zurückgibt. Damit wird die Bedingung als true ausgewertet, wenn sich speed um mindestens 5 ändert.
+    driverID != prevDriverID || Ignition != prevIgnition || (fabs(bat - prevBat) >= 0.2)  || consumption1 != prevconsumption1 ||
+    avgSpeed != prevavgSpeed || fuel != prevFuel || (fabs(speed - prevSpeed) >= 5) ||             //unter Verwendung der fabs-Funktion aus der cmath-Bibliothek, die den absoluten Wert einer Zahl zurückgibt. Damit wird die Bedingung als true ausgewertet, wenn sich speed um mindestens 5 ändert.
     stat != prevStat || remT != prevRemT) {
 
     //publishMetricsData();  // Funktion ausführen, wenn sich eine Variable geändert hat
@@ -234,8 +234,8 @@ void publishMetricsData() {
     prevDriverID = driverID;
     prevIgnition = Ignition;
     prevBat = bat;
-    prevAvrFuel = avrFuel;
-    prevAvrSpeed = avrSpeed;
+    prevconsumption1 = consumption1;
+    prevavgSpeed = avgSpeed;
     prevFuel = fuel;
     prevSpeed = speed;
     prevRemT = remT;  // Verbleibende Zeit der Standheizung
@@ -250,8 +250,8 @@ void publishMetricsData() {
     doc[topic1a][topic2a1] = rpm;
     doc[topic1a][topic2a2] = speed; 
     doc[topic1a][topic2a3] = fuel;
-    doc[topic1a][topic2a4] = avrSpeed;
-    doc[topic1a][topic2a5] = avrFuel;
+    doc[topic1a][topic2a4] = avgSpeed;
+    doc[topic1a][topic2a5] = consumption1;
     doc[topic1a][topic2a6] = bat;
     doc[topic1a][topic2a7] = Ignition;
     doc[topic1a][topic2a8] = driverID;
@@ -354,7 +354,7 @@ void publishGpsData(double distance, double angle) {
   }
 }
 
-/*  ####################### GPS ################################################ */
+/*####################### GPS ################################################*/
 boolean valid;
 void PollGPSData() {
     // Call (mySARA.gpsGetRmc to get coordinate, speed, and timing data
@@ -409,6 +409,28 @@ void printGPS(void){
     controlLED(2, CRGB::Red, 2);        // LED 3 
     lat=prevLat;  // Wenn keine gültigen GPS Werte kommen setze die letzten bekannten Werte ein
     lon=prevLon;
+  }
+}
+
+// GPS aktivieren
+void enableGPS() {
+  SARA_R5_error_t result = mySARA.gpsPower(true);
+  pollGpsTimer.start();                           // PollGPSData
+  if (result == SARA_R5_SUCCESS) {
+    debugln("GPS erfolgreich aktiviert.");
+  } else {
+    debugln("Fehler beim Aktivieren des GPS.");
+  }
+}
+
+// GPS deaktivieren
+void disableGPS() {
+  SARA_R5_error_t result = mySARA.gpsPower(false);
+  pollGpsTimer.stop();                           // PollGPSData
+  if (result == SARA_R5_SUCCESS) {
+    debugln("GPS erfolgreich deaktiviert.");
+  } else {
+    debugln("Fehler beim Deaktivieren des GPS.");
   }
 }
 
@@ -599,7 +621,6 @@ void checkNetworkRegistration() {
 }
 */
 
-
 // EPS-Registrierungs-Callback-Funktion (Command: +CEREG=2)
 void epsRegistrationCallback(SARA_R5_registration_status_t status, unsigned int tac, unsigned int ci, int Act) {
   debugln("##########.......................................Check EPS Registration (+CEREG).");
@@ -682,6 +703,7 @@ void registrationCallback(SARA_R5_registration_status_t status, unsigned int lac
 }
 */
 
+static uint8_t NoGSM[]= {0x80, 0x0F, 0xE7, 0x24, 0x02, 0x00, 0x4E, 0x6F, 0x20, 0x47, 0x53, 0x4D, 0x20, 0x20, 0x20};
 // Callback-Funktion zur Verarbeitung des Registrierungsstatus (Command: +CREG=2)
 void registrationCallback(SARA_R5_registration_status_t status, unsigned int lac, unsigned int ci, int Act) {
   debugln("##########.......................................Check Registration (+CREG).");
@@ -689,10 +711,12 @@ void registrationCallback(SARA_R5_registration_status_t status, unsigned int lac
   switch (status) {
     case SARA_R5_REGISTRATION_NOT_REGISTERED:
       debugln("Callback: Not registered with the network.");
+      ibusTrx.write(NoGSM);
       activateInternet();
       break;
     case SARA_R5_REGISTRATION_SEARCHING:
       debugln("Callback: Searching for network...");
+      ibusTrx.write(NoGSM);
       break;
     case SARA_R5_REGISTRATION_HOME:
       debugln("Callback: Registered on home network.");
@@ -702,18 +726,22 @@ void registrationCallback(SARA_R5_registration_status_t status, unsigned int lac
       break;
     case SARA_R5_REGISTRATION_UNKNOWN:// +CREG: 4 
       debugln("Callback: Unknown registration status.");
+      ibusTrx.write(NoGSM);
       activateInternet();
       break;
     case SARA_R5_REGISTRATION_HOME_SMS_ONLY:
       debugln("Callback: Registered on home network (SMS only).");
+      ibusTrx.write(NoGSM);
       activateInternet();
       break;
     case SARA_R5_REGISTRATION_ROAMING_SMS_ONLY:// +CREG: 7 
       debugln("Callback: SMS-Only on roaming network.");
+      ibusTrx.write(NoGSM);
       activateInternet();
       break;
     case SARA_R5_REGISTRATION_EMERGENCY_SERV_ONLY:
       debugln("Callback: Registered for emergency services only.");
+      ibusTrx.write(NoGSM);
       break;
     case SARA_R5_REGISTRATION_HOME_CSFB_NOT_PREFERRED:
       debugln("Callback: Registered on home network (CSFB not preferred).");
@@ -734,7 +762,6 @@ void registrationCallback(SARA_R5_registration_status_t status, unsigned int lac
   debug("Access Technology (Act): ");
   debugln(Act);
 }
-
 
 void readRssi(){
   int rssi = mySARA.rssi();

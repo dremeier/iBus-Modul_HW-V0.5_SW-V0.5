@@ -2,8 +2,9 @@
 #define GLOBALS_H
 
 #include <Arduino.h>
-#include <IPAddress.h>  // Einbinden der IPAddress-Bibliothek für IP-Adressen
+#include <IPAddress.h>                  // Einbinden der IPAddress-Bibliothek für IP-Adressen
 #include <INA219_WE.h>
+#include "timer.h"                      // Timer Lib um Delay zu vermeiden
 
 //#define BTConfig // Einschlaten der Bluetooth Configuration
 /*
@@ -24,6 +25,12 @@
     #define debugf(...)
 #endif
 
+//################ Timer ###################################
+extern Timer BluetoothToggleTimer;      // Bluetooth ein/aus
+extern Timer BlinkerUnblockTimer;       // Blinkersperre zwischen zwei Blinksignalen aufheben
+extern Timer pollGpsTimer;              // pollGPSdata
+extern Timer BcResettenTimer;           // nach ablauf des Timers wird die Consumption1 resettet
+
 //########## UART und PIN SETTINGS ####################################
 #define BTcom Serial1           // Bluetooth Modul UART
 #define ibusPort Serial2        // Serial für Ibus = Serial2 = RxPIN 7 und TxPin 8 , CleartoSent = Pin 5
@@ -42,9 +49,6 @@ const byte TH_RESET = 4;        // Reset output from Melexis TH3122 PIN14.
 #define PCM_EN 23               // Enable LDOs für PCM I2S Power
 #define PCMD3140_ADDRESS 0x4E   // I2C-Adresse des PCMD3140 PDM-Micro
 
-//################ Timer ###################################
-//extern const long RandomTempTimer;    // Timer für eine zufällige Außentemperatur (in Millisekunden)
-
 // ########################## MQTT TOPICS ##############################
 // MQTT Topic Struktur für Sara -> iobroker Publishes (Senden)
 #define topic1a  "Metrics"    // Topic für alle Metriken
@@ -57,8 +61,8 @@ const byte TH_RESET = 4;        // Reset output from Melexis TH3122 PIN14.
 #define topic2a1  "RPM"       // Motordrehzahl (RPM)
 #define topic2a2  "Speed"     // Geschwindigkeit (Speed)
 #define topic2a3  "Fuel"      // Tankinhalt (Fuel)
-#define topic2a4  "AvrSpeed"  // Durchschnittsgeschwindigkeit (Average Speed)
-#define topic2a5  "AvrFuel"   // Durchschnittlicher Kraftstoffverbrauch (Average Fuel)
+#define topic2a4  "avgSpeed"  // Durchschnittsgeschwindigkeit (Average Speed)
+#define topic2a5  "avgFuel"   // Durchschnittlicher Kraftstoffverbrauch (Average Fuel)
 #define topic2a6  "Bat"       // Batteriespannung (Battery Voltage)(kommt vom INA219)
 #define topic2a7  "Ign"       // Zündung an/aus (Ignition State)
 #define topic2a8  "Driver"    // Fahrer-ID (Driver ID)
@@ -106,8 +110,8 @@ extern String driverID;             // Aktuelle Fahrer-ID
 extern bool Ignition;               // Zündung an/aus (true/false)
 extern float bat;                   // Batteriespannung in Volt
 extern float strom;                 // Strom des gesamten iBus-Modules (kommt vom INA219)
-extern float avrFuel;               // Durchschnittlicher Kraftstoffverbrauch (L/100km)
-extern uint16_t avrSpeed;           // Durchschnittsgeschwindigkeit (km/h)
+extern float consumption1;               // Durchschnittlicher Kraftstoffverbrauch (L/100km)
+extern float avgSpeed;           // Durchschnittsgeschwindigkeit (km/h)
 extern uint16_t fuel;               // Aktueller Tankinhalt (L)
 extern uint16_t speed;              // Aktuelle Geschwindigkeit (km/h)
 extern uint16_t rpm;                // Aktuelle Motordrehzahl (U/min)
@@ -149,8 +153,8 @@ extern bool prevZVlocked;
 extern String prevDriverID;
 extern bool prevIgnition;
 extern float prevBat;
-extern float prevAvrFuel;
-extern uint16_t prevAvrSpeed;
+extern float prevconsumption1;
+extern float prevavgSpeed;
 extern uint16_t prevFuel;
 extern uint16_t prevSpeed;
 extern uint16_t prevRpm;

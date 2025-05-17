@@ -6,6 +6,7 @@
 #include <IbusTrx.h>
 #include <Snooze.h>             // Teensy Snooze Lib - diese muss modifiziert werden siehe: https://github.com/duff2013/Snooze/issues/114
 #include "neopixel.h"           // Funktiuonen für die Neopixel LEDs
+#include "sara-lte.h"
 
 BH1750 lightMeter;    // Lichtsensor Instance
 IbusTrx ibusTrx;      // IbusTrx instance
@@ -17,6 +18,11 @@ bool sideMirrorDone;
 bool blinkLockedLi = false;            // Sperre für linkes Blinken
 bool blinkLockedRe = false;            // Sperre für rechtes Blinken
 
+// TODO: in globale variablen wandeln wenn diese per mqtt versendet werden sollen
+float consumption2 = 0.0;
+float range = 0.0;
+int gearStatus = 0;
+bool resetConsumptionOK;
 
 enum TurnState
 {
@@ -44,7 +50,7 @@ void iBusMessage()
     // read the incoming message (this copies the message and clears the receive buffer)
     IbusMessage message = ibusTrx.readMessage();
 
-    /* the following addresses are defined in the IbusTrx library:
+    /* the following addresses are defined in the IbusTrx library IbusNames.h:
     M_GM5 = 0x00;  // GM5: body control module
     M_NAV = 0x3B;  // NAV: Navigation / Monitor / Bordcomputer
     M_DIA = 0x3F;  // DIA: diagnostic computer
@@ -59,6 +65,7 @@ void iBusMessage()
     M_IKET = 0x30; // IKE TextFeld (Großes Display)
     M_BMB = 0xF0;  // BMB: Bordmonitor Buttons
     M_DSP = 0x6A;  // DSP: Digital Sound Processor
+    M_OBC = 0xE7;  // OBC: On Board Computer / Multicast an verschiedene Fahrzeugdisplays
     */
 
     // these two functions return the source and destination addresses of the IBUS message:
@@ -294,7 +301,6 @@ void iBusMessage()
       }
     }
 
-
     // US - Tagfahrlicht ein/aus schalten. Hierzu muss das Byte 21 in Block 08 des LCM codiert werden.
     if (usLightTrigger)
     {
@@ -307,14 +313,18 @@ void iBusMessage()
               LcmBlock8[i-1] = message.b(i);
           }
           LcmBlock8[20] = usLightByte21;                            // Ersetze message.b(21) durch usLightByte21
-          uint8_t finalMessage[37] = {0x3F, 0x23, 0xD0, 0x09};      // Erstelle den finalen Nachrichtenblock mit dem Präfix 3F 23 D0 09
-          memcpy(finalMessage + 4, LcmBlock8, 32);                  // Kopiere das korrigierte Array in den finalen Nachrichtenblock
-          ibusTrx.write(finalMessage);
+          uint8_t LcmDayLight[37] = {0x3F, 0x23, 0xD0, 0x09};       // Erstelle den finalen Nachrichtenblock mit dem Präfix 3F 23 D0 09
+          memcpy(LcmDayLight + 4, LcmBlock8, 32);                   // Kopiere das korrigierte Array in den finalen Nachrichtenblock
+          ibusTrx.write(LcmDayLight);
       }
     }
     
-
     // 80 -> BF Geschwindigkeit, RPM, OutTemp, CoolantTemp
+    // TODO: KM-Stand ermitteln, Avg.Speed
+    /* ### KM Stand: ##############
+    80 LL BF 17 7A 0B 03 00 1F 00 00,IKE,GLO,Odometer 199546 km
+    80 LL BF 17 7B 51 03 80 1F 02 CC,IKE,GLO,Odometer 217467 km
+    80 LL 17 7C 0B 03 00 1F 00 00,IKE,GLO,Odometer 199548 km*/
     if ((source == M_IKEC) && (destination == M_ALL))
     {
       switch (message.b(0))
@@ -330,15 +340,14 @@ void iBusMessage()
 
       case 0x19: // 80 05 BF 19 2F 5C (50),IKE --> GLO Temperature Outside 47C Coolant 92C
         outTemp = message.b(1);
-        // aussentemp = outTemp;
         debug("Aussen Temperatur: ");
         debugln(outTemp);
 
         coolant = message.b(2);
         kwassertemp = coolant;
+        Coolant(coolant); // Gehe in die Funktion um Die Kühlmitteltemperatur im Bordmonitor anzuzeigen
         debug("Kuehlmittel Temperatur: ");
         debugln(coolant);
-        Coolant(coolant); // Gehe in die Funktion um Die Kühlmitteltemperatur im Bordmonitor anzuzeigen
         break;
 
       case 0x11: // Zündungs Status
@@ -346,6 +355,11 @@ void iBusMessage()
         {
         case 0x00: // Zündung Aus  80 04 BF 11 00
           Ignition = false;
+          disableGPS();
+          if (BcResetten)
+          {
+            BcResettenTimer.start(); // nach ablauf von 3 stunden -> resetConsumption1() resetConsumptionOK=true, wenn dann Zündung ein sende Reset
+          }      
           debugln("Zündung AUS");
           if (driverID == "Andre")
           {
@@ -369,6 +383,12 @@ void iBusMessage()
         case 0x03: // Zündung Pos.2  80 04 BF 11 03
           Ignition = true;
           IKEclear = true;
+          enableGPS();
+          if (resetConsumptionOK)
+          {
+            resetConsumptionOK=false;
+            ibusTrx.write(RecalculateConsumption1);
+          }
           debugln("Zündung Pos.2");
           if (driverID == "Andre")
           {
@@ -385,6 +405,56 @@ void iBusMessage()
           break;
         }
         break;
+
+      case 0x13: // Getriebestatus auslesen
+        switch (message.b(2) & 0xF0) // Lesen der oberen 4 Bits für den Gangstatus
+        {
+        case 0xB0:
+            gearStatus = 1; // Park
+            debugln("Getriebe in Parkstellung");
+            break;
+        case 0x10:
+            gearStatus = 2; // Rückwärts
+            debugln("Getriebe im Rückwärtsgang");
+            break;
+        case 0x70:
+            gearStatus = 3; // Neutral
+            debugln("Getriebe in Neutral");
+            break;
+        case 0x80:
+            gearStatus = 4; // Drive
+            debugln("Getriebe in Drive");
+            break;
+        case 0x20:
+            gearStatus = 5; // Erster Gang
+            debugln("Getriebe im 1. Gang");
+            break;
+        case 0x60:
+            gearStatus = 6; // Zweiter Gang
+            debugln("Getriebe im 2. Gang");
+            break;
+        case 0xD0:
+            gearStatus = 7; // Dritter Gang
+            debugln("Getriebe im 3. Gang");
+            break;
+        case 0xC0:
+            gearStatus = 8; // Vierter Gang
+            debugln("Getriebe im 4. Gang");
+            break;
+        case 0xE0:
+            gearStatus = 9; // Fünfter Gang
+            debugln("Getriebe im 5. Gang");
+            break;
+        case 0xF0:
+            gearStatus = 10; // Sechster Gang
+            debugln("Getriebe im 6. Gang");
+            break;
+        default:
+            gearStatus = 0; // Unbekannter Status
+            debugln("Unbekannter Getriebestatus");
+            break;
+        }
+        break;  
       }
     }
 
@@ -451,6 +521,82 @@ void iBusMessage()
         break;
       }
     }
+
+    // 80 -> E7 Bordcomputerdaten ermitteln
+    if (source == M_IKEC && destination == M_OBC)
+    {
+      
+      switch (message.b(0))
+      {
+      case 0x24:                //cluster will send display data at regular intervals irrespective of what is being displayed
+        switch (message.b(1))
+        {
+        case 0x04:              // `0x04`|Consump. 1
+          
+          // Berechne den Verbrauchswert aus den ASCII-Zahlen
+          consumption1 = (message.b(3) - '0') * 10.0;   // Zehnerstelle
+          consumption1 += (message.b(4) - '0');           // Einerstelle
+          consumption1 += (message.b(6) - '0') * 0.1;     // Zehntelstelle
+          Serial.print("Verbrauch: ");
+          Serial.print(consumption1);
+          Serial.println(" L/100");
+          break;
+        
+        case 0x05:              // `0x05`|Consump. 2 
+          // Berechne den Verbrauchswert aus den ASCII-Zahlen
+          consumption2 = (message.b(3) - '0') * 10.0;   // Zehnerstelle
+          consumption2 += (message.b(4) - '0');           // Einerstelle
+          consumption2 += (message.b(6) - '0') * 0.1;     // Zehntelstelle
+          Serial.print("Verbrauch: ");
+          Serial.print(consumption2);
+          Serial.println(" L/100");
+          break;
+
+        case 0x0A: // `0x0A`|Avg. Speed
+          // Berechne die Durchschnittsgeschwindigkeit aus den ASCII-Zahlen
+          avgSpeed = (message.b(3) - '0') * 10.0;   // Zehnerstelle
+          avgSpeed += (message.b(4) - '0');           // Einerstelle
+          avgSpeed += (message.b(6) - '0') * 0.1;     // Zehntelstelle
+          Serial.print("Durchschnittsgeschwindigkeit: ");
+          Serial.print(avgSpeed);
+          Serial.println(" KM/H");
+          break;
+
+        case 0x06: // `0x06`|Range
+          // Berechne die Reichweite aus den ASCII-Zahlen
+          range = (message.b(3) - '0') * 100.0;      // Hunderterstelle
+          range += (message.b(4) - '0') * 10.0;       // Zehnerstelle
+          range += (message.b(5) - '0');              // Einerstelle
+          Serial.print("Reichweite: ");
+          Serial.print(range);
+          Serial.println(" KM");
+          break;
+
+        default:
+          break;
+        }
+        break;
+      
+      case 0x2A:                    // Status des Zusatzheizers
+        switch (message.b(2))
+        {
+        case 0x20:                  // 80 05 E7 2A 00 20
+          // Standheizung an
+          stat = true;
+          break;
+        case 0x00:
+          // Standheizung aus
+          stat = false;
+          break;
+        default:
+          break;
+        }
+
+      default:
+        break;
+      }
+    }
+    
 
     // Bordmonitor-Tasten F0 zum Radio 68
     if (source == M_BMB && destination == M_RAD)
@@ -850,6 +996,12 @@ void BlinkerUnblock()
   */
 }
 
+// reset consumptrion1
+void resetConsumption1()
+{
+  resetConsumptionOK=true; // nach ablauf von 3 stunden -> resetConsumption1() resetConsumptionOK=true, wenn dann Zündung ein sende Reset
+}
+
 // ###############################################################################################
 // ########################### iBus Codes ########################################################
 // die checksumme muss nicht mit angegeben werden
@@ -865,7 +1017,8 @@ uint8_t ZV_lock[] PROGMEM = {0x3F, 0x05, 0x00, 0x0C, 0x00, 0x0B};               
 uint8_t Heimleuchten[] PROGMEM = {0x3F, 0x0F, 0xD0, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x18, 0x44, 0x00, 0x00, 0x00, 0xE5, 0xFF, 0x00};  // Lichter für Heimleuchten: Bremslicht und Nebelleuchten: 3F0FD00C000000001844000000E5FF00
 uint8_t Tankinhalt[5] PROGMEM = {0x3F, 0x04, 0x80, 0x0B, 0x0A};                                                                     // Tankinhalt abfragen:	3F 04 80 0B 0A (BA)
 uint8_t SthzEIN[5] PROGMEM = {0x3B, 0x04, 0x80, 0x41, 0x12};                                                                        // Standheizung EIN: 3B 04 80 41 12 (EC)
-uint8_t SthzAUS[5] PROGMEM = {0x3B, 0x04, 0x80, 0x41, 0x11};                                                                        // Standheizung AUS: 3B 04 80 41 11 (EC)
+uint8_t SthzAUS[5] PROGMEM = {0x3B, 0x04, 0x80, 0x41, 0x11};    
+uint8_t RecalculateConsumption1[] PROGMEM = {0x3B, 0x04, 0x80, 0x41, 0x04, 0x10};                                                                    // Standheizung AUS: 3B 04 80 41 11 (EC)
 
 /*
 // Example: define the message that we want to transmit

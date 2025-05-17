@@ -16,6 +16,7 @@ static const uint8_t M_LCM = 0xD0;  // LCM: light control module
 static const uint8_t M_IKET = 0x30; // IKE TextFeld (Großes Display)
 static const uint8_t M_BMB = 0xF0;  // BMB: Bordmonitor Buttons
 static const uint8_t M_DSP = 0x6A;  // DSP: Digital Sound Processor
+static const uint8_t M_OBC = 0xE7;  // OBC: On Board Computer, Displays (Multicast)
 
 // GM5 input/output addresses
 static const uint8_t GM5_SET_IO = 0x0C; // "set IO" diagnostic command

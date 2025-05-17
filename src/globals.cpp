@@ -39,8 +39,8 @@ bool ZVlocked = 1;                  // Türen Verriegelt
 String driverID = "Nil";            // Fahrer ID
 bool Ignition;                      // Zündung an/aus
 float bat = 12.8;                   // Batterie Spannung in V
-float avrFuel = 11.3;               // Durchschnittlicher Kraftstoffverbrauch in L/100Km
-uint16_t avrSpeed = 85;             // Durchschnittsgeschwindigkeit in Km/h
+float consumption1 = 11.3;               // Durchschnittlicher Kraftstoffverbrauch in L/100Km
+float avgSpeed = 85;             // Durchschnittsgeschwindigkeit in Km/h
 uint16_t fuel = 41;                 // Tankinhalt in L
 uint16_t speed = 0;                 // Geschwindigkeit in Km/h
 uint16_t rpm = 0;                   // Motordrehzahl
@@ -120,8 +120,8 @@ String prevDriverID;
 bool prevIgnition;
 float prevBat;
 float strom;                 // Strom des gesamten iBus-Modules (kommt vom INA219)
-float prevAvrFuel;
-uint16_t prevAvrSpeed;
+float prevconsumption1;
+float prevavgSpeed;
 uint16_t prevFuel;
 uint16_t prevSpeed;
 uint16_t prevRpm;

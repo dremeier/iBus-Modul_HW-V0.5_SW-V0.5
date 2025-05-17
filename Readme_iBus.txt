@@ -30,17 +30,17 @@ BIT0, BIT1
 0x05, 0x04 // Immobilisation_deactivated Valid_key_detected Key_4
 
 
-TODO: Codes überprüfen in Real
+Codes überprüfen in Real
 80 04 BF 11 00     Zündung Aus
 80 04 BF 11 01     Zündung Pos.1
 80 04 BF 11 03     Zündung Pos.2
 80 04 BF 11 07     Zündung Pos.3 Start
 
-TODO: !Tankinhalt abfragen:	3F 04 80 0B 0A (BA)  (Antwort noch ermitteln!!!) keine Antwort
+TODO: !Tankinhalt abfragen:	3F 04 80 0B 0A (BA) IKE (Antwort noch ermitteln!!!) keine Antwort
 
 00 05 BF 7A 51          status Fahrertür ist auf (wenn Tür auf geht Heimleuchten einschalten)
 
-TODO: ##########################################################################################################################
+##########################################################################################################################
 Blinker: Wenn Blinkerpfeil im IKE links: D0 07 BF 5B 20 00 04 00 (17) oder Blinkerpfeil im IKE rechts:  D0 07 BF 5B 40 00 04 00 (77)
      D0 07 BF 5B 40 00 04 00 77
                   |  |  |  |  |
@@ -74,6 +74,34 @@ Altes Modul HW2.0:
 <-                   3F 0F D0 0C 00 00 40 00 00 00 00 00 00 24 FF 00 77
 
  #############################################################################################################################
+
+############################ Funktion zum An-/Ausschalten für das US-Standlicht einbauen. Hierzu muss das Byte 21 in Block 08 des LCM codiert werden.
+
+Byte 21 == 00 US-Tagfahrlicht aus
+Byte 21 == 28 US-Tagfahrlicht ein
+
+Auslesen des Blocks mit:
+3F 04 D0 08 00 CS
+
+Antwort:
+D0 23 3F A0 ....... CS
+also:
+D0 23 3F A0 00 86 00 08 01 00 64 74 00 00 00 00 00 00 00 B0 00 55 40 90 00 00 0B 00 00 00 00 28 1F 00 00 00 (FA)
+																		 |-> Byte 21, message.b(21)
+
+Ohne US-Tagfahrlicht kommt sowas in der Art :
+00 86 00 08 01 00 64 74 00 00 00 00 00 00 00 B0 00 55 40 90 00 00 0B 00 00 00 00 28 1F 00 00 00
+                                                             | -> Byte 21
+
+Schreiben des Blocks mit:
+3F 23 D0 09 ....... CS
+
+Für US-Tagfahrlicht muss dann dieser Block gesendet werden:
+00 86 00 08 01 00 64 74 00 00 00 00 00 00 00 B0 00 55 40 90 28 00 0B 00 00 00 00 28 1F 00 00 00
+                                                             |-> Byte 21
+z.B.:
+3F 23 D0 09 00 86 00 08 01 00 64 74 00 00 00 00 00 00 00 B0 00 55 40 90 28 00 0B 00 00 00 00 28 1F 00 00 00
+######################################################################################################################
 
 
 Geschwindigkeit, RPM, OutTemp, CoolantTemp
@@ -109,3 +137,24 @@ speed =120 ->>>     80 05 BF 18 3C 18   erwarte: B0 05 7F AA 10 12 62  NaviZomm5
 -> Modul fragt den Block ab: 3F 04 D0 08 00
 <- Antwort:                 D0 23 3F A0 00 86 00 08 01 00 64 74 00 00 00 00 00 00 00 B0 00 55 40 90 00 00 0B 00 00 00 00 28 1F 00 00 00
 -> Modul ersetzt Byte 21:   3F 23 D0 09 00 86 00 08 01 00 64 74 00 00 00 00 00 00 00 B0 00 55 40 90 28 00 0B 00 00 00 00 28 1F 00 00 00 (7B)
+
+
+## prüfung Getriebestatus:
+80 0A BF 13 02 B0 00 02 00 00 5A -> Park
+80 0A BF 13 02 D0 00 02 00 00 5A -> 3.Gang
+
+### Neueberechnung der Consumption1
+3B 04 80 41 04 10 xx
+
+### Standheizung Status:
+80 05 E7 2A 00 20 - ein
+80 05 E7 2A 00 00 - aus
+
+
+TODO: 
+3. Wenn kein GSM-Empfang besteht und du darüber informiert werden möchtest, könntest du dies im Monitor unten rechts anzeigen lassen (ich hatte das bei mir mit dem GPS-Signal gemacht):
+Code:
+80 0F E7 24 02 00 4E 6F 20 47 53 4D 20 20 20 CS
+Dieser Code sollte dort „No GSM“ anzeigen.
+static uint8_t NoGSM[]= {0x80, 0x0F, 0xE7, 0x24, 0x02, 0x00, 0x4E, 0x6F, 0x20, 0x47, 0x53, 0x4D, 0x20, 0x20, 0x20};
+ibusTrx.write(NoGSM);

@@ -6,20 +6,15 @@
 #ifndef IbusCodes_h
 #define IbusCodes_h
 #include <Arduino.h>
-#include <IbusTrx.h>                    // IbusTrx library selbst abgeändert und erweitert
+#include <IbusTrx.h>              // IbusTrx library selbst abgeändert und erweitert
 #include <BH1750.h> 
-#include "timer.h"                      // Timer Lib um Delay zu vermeiden
-#include <Snooze.h>             // Teensy Snooze Lib
+#include <Snooze.h>               // Teensy Snooze Lib
 
-extern IbusTrx ibusTrx;                 // IbusTrx instance
-extern BH1750 lightMeter;               // Lichtsensor Instance
+extern IbusTrx ibusTrx;           // IbusTrx instance
+extern BH1750 lightMeter;         // Lichtsensor Instance
 extern SnoozeUSBSerial usb;
-extern SnoozeDigital digital;                  // this is the pin's wakeup driver
-extern SnoozeBlock config_sleep; // install driver into SnoozeBlock
-
-extern Timer BluetoothToggleTimer;      // Bluetooth ein/aus
-extern Timer BlinkerUnblockTimer;       // Blinkersperre zwischen zwei Blinksignalen aufheben
-
+extern SnoozeDigital digital;     // this is the pin's wakeup driver
+extern SnoozeBlock config_sleep;  // install driver into SnoozeBlock
 
 // Deklaration der Variablen als extern
 extern uint8_t cleanIKE[6];
@@ -37,6 +32,7 @@ extern uint8_t Heimleuchten[16];
 extern uint8_t Tankinhalt[5];
 extern uint8_t SthzEIN[5];
 extern uint8_t SthzAUS[5];
+extern uint8_t RecalculateConsumption1[];
 
 // ########################## Funktionserklärungen ############################
 void iBusMessage();
@@ -47,5 +43,6 @@ void ClearToSend();
 void updateNavZoom();             // Automatischer Navigations Zoom je nach Geschwindigkeit
 void SpiegelAnklappen();          // Beim Verriegeln Seitenspiegel anklappen
 void BlinkerUnblock();            // Blinkersperre zwischen zwei Blinksignalen aufheben
+void resetConsumption1();         // reset consumptrion1
 
 #endif
