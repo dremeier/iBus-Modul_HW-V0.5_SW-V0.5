@@ -1,64 +1,62 @@
-# SARA-R5 Project with Sparkfun and Custom iBusTrx Library
+# BMW iBus Modul V0.5 – SARA-R5 LTE Telemetrie
 
-This project involves using the u-blox SARA-R5 module for an LTE connection, integrating GPS data, NeoPixel LED control, MQTT communication with SSL/TLS for secure data transfer to ioBroker, and interaction with the iBus system. Additionally, Bluetooth functionalities and multiple timers are included to handle various tasks.
+Dieses Projekt ermöglicht die Anbindung eines BMW E38 an einen Cloud-basierten MQTT-Server über ein selbst entwickeltes iBus-Modul und ein SARA-R5 LTE-Modul. Damit können Fahrzeugdaten in Echtzeit überwacht und verschiedene Funktionen ferngesteuert werden, wie z.B. GPS-Tracking, Standheizung, Blinker, Spiegel und Zentralverriegelung.
 
-## Overview
-This code connects a BMW E38 car to a cloud-based MQTT server using an LTE module, providing real-time telemetry, GPS data, and interactive vehicle controls. The project uses:
-- SparkFun u-blox SARA-R5 Library
-- Custom-modified iBusTrx Library for iBus communication
-- NeoPixel LEDs for status indication
-- Custom timer management to handle multiple intervals without blocking
-- EEPROM storage for preserving settings
-- Bluetooth control integration
+## Hauptfunktionen
+- **Sichere MQTT-Kommunikation:** Übertragung von Telemetrie- und Statusdaten zu ioBroker mit TLS-Verschlüsselung.
+- **GPS-Daten:** Erfassen und Übermitteln von Position, Geschwindigkeit und Richtung.
+- **iBus-Steuerung:** Senden und Empfangen von Nachrichten zur Steuerung von Fahrzeugfunktionen (z.B. Blinker, Spiegel, Standheizung, Zentralverriegelung, US-Tagfahrlicht).
+- **Bluetooth-Integration:** Steuerung und Statusabfrage eines Bluetooth-Moduls.
+- **NeoPixel-LEDs:** Drei LEDs zeigen den Systemstatus (Netzwerk, MQTT, GPS) an.
+- **EEPROM-Speicherung:** Persistente Speicherung wichtiger Parameter (z.B. GPS-Abstand, Einstellungen).
+- **Timer-Management:** Nicht-blockierende Timer für verschiedene Aufgaben (Polling, MQTT, Standheizung).
 
-## Features
-- **MQTT Connection:** Secure MQTT 3.11 connection with TLS to ioBroker.
-- **GPS Data Processing:** Captures and publishes vehicle location, speed, and orientation.
-- **NeoPixel LED Indicators:** Three LEDs provide real-time system status for network, MQTT, and GPS.
-- **Custom iBus Commands:** Allows sending commands to the vehicle's iBus for various functionalities.
-- **Bluetooth Interaction:** Controls and retrieves Bluetooth module data.
-- **EEPROM Storage:** Saves GPS distance, angle, and other settings persistently.
-- **Timers:** Multiple non-blocking timers manage polling intervals for different data sources.
+## Hardware
+- **Plattform:** Eigenes iBus-Modul HW V0.5
+- **Modem:** u-blox SARA-R5 LTE-Modul
+- **Sensoren:** BH1750 Lichtsensor, INA219 Spannungs-/Stromsensor
+- **LEDs:** NeoPixel
 
-## Hardware Version
-- Version 0.5
-- Author: AME
-- Date: 01/11/2024
-
-## Dependencies
+## Abhängigkeiten
 - [SparkFun u-blox SARA-R5 Arduino Library](http://librarymanager/All#SparkFun_u-blox_SARA-R5_Arduino_Library)
-- Custom-modified iBusTrx Library for enhanced iBus support
+- Modifizierte iBusTrx-Library (lib/ibustrx)
+- ArduinoJson, EEPROM, Snooze, BH1750
 
-## Setup
-1. **Neopixel LEDs:** Initializes three LEDs for system status indication.
-2. **PIN Configuration:** Sets up power pins, UART pins, and power-saving pins for the SARA-R5 and iBus communication.
-3. **Bluetooth Initialization:** Configures Bluetooth settings for remote control interaction.
-4. **SARA-R5 LTE Connection:** Attempts to connect to a network provider and establish a secure MQTT connection with ioBroker.
-5. **EEPROM Initialization:** Reads and writes essential data for system parameters.
+## Projektstruktur
+- `src/` – Hauptquellcode (z.B. main.cpp, IbusCodes.cpp/h, sara-lte.cpp/h, bluetooth.cpp/h, globals.cpp/h, math_functions.cpp/h)
+- `lib/` – Bibliotheken (u.a. SparkFun SARA-R5, ibustrx)
+- `include/` – Header für PlatformIO
+- `platformio.ini` – PlatformIO-Projektkonfiguration
+- `mqtt_secrets.h` – MQTT Zugangsdaten (nicht im Repository enthalten!)
 
-## Usage
-### Core Functionalities
-- **MQTT Connection and Data Publishing:** Establishes a secure connection to an MQTT broker, sending vehicle telemetry data, GPS position, and status updates.
-- **GPS Data Processing:** Polls GPS data at regular intervals, calculates distance and angle changes, and publishes the information.
-- **iBus Messaging:** Controls various vehicle components via iBus messages, such as central locking, mirror folding, and ambient light control.
-- **Bluetooth Control:** Interacts with a Bluetooth module, sending commands and receiving playback data.
-- **Standheizung Timer:** Manages the car’s auxiliary heater based on time intervals or remote commands.
+## Inbetriebnahme & Nutzung
+1. **Hardware aufbauen** (Schaltplan und Pinbelegung siehe globals.h).
+2. **Projekt mit PlatformIO öffnen** und alle Abhängigkeiten installieren.
+3. **MQTT Zugangsdaten** in `mqtt_secrets.h` eintragen.
+4. **Firmware flashen** (PlatformIO: Upload).
+5. **Modul im Fahrzeug anschließen** (iBus, Strom, LTE-Antenne, Sensoren, LEDs).
+6. **ioBroker MQTT-Adapter konfigurieren** (Topics siehe Quellcode und Readme_iBus.txt).
 
-### Important Commands
-- **Power Saving and Connection Settings:** AT commands manage power-saving modes and keep-alive settings to ensure stable LTE connectivity.
-- **iBus Custom Commands:** Control functions like locking/unlocking, mirror folding, and ambient light activation.
-- **MQTT Topic Subscriptions:** Dynamically subscribes to MQTT topics, handles data processing, and updates car settings based on received commands.
+## Wichtige Funktionen im Code
+- `setup()` – Initialisiert Hardware, verbindet LTE, setzt MQTT auf, abonniert Topics.
+- `loop()` – Pollt Sensoren, verarbeitet iBus-Nachrichten, aktualisiert Systemstatus.
+- `iBusMessage()` – Zentrale Auswertung und Steuerung aller iBus-Kommandos.
+- `publishMetricsData()` – Sendet Telemetrie als JSON via MQTT.
+- `readMqttData()` – Verarbeitet eingehende MQTT-Kommandos (z.B. Standheizung, Spiegel, Blinker, US-Tagfahrlicht).
 
-### Code Structure
-- **`setup()`**: Initializes hardware components, connects to LTE, sets up MQTT, and subscribes to relevant topics.
-- **`loop()`**: Regularly checks for data from sensors, processes iBus messages, and updates system states.
+## Beispiel: US-Tagfahrlicht schalten
+- MQTT-Topic: `BMW7er/Subscription/usLight` (Payload: `1`=ein, `0`=aus)
+- Das Modul liest Block 08 des LCM, setzt Byte 21 und schreibt den Block zurück (siehe Readme_iBus.txt).
 
-### Key Components and Files
-- **`sara-lte.h`**: Manages LTE communication and MQTT connection.
-- **`globals.h`**: Stores global variables and settings.
-- **`mqtt_secrets.h`**: Keeps MQTT broker details securely.
-- **`neopixel.h`**: Handles LED display status.
-- **`iBusTrx`**: Custom library for enhanced iBus functionality.
+## Hinweise
+- Die iBus-Kommandos und deren Antworten sind in `Readme_iBus.txt` dokumentiert.
+- Die Hardware-Pinbelegung und Timer sind in `globals.h` und `main.cpp` beschrieben.
+- Die Firmware ist für PlatformIO/Teensy ausgelegt.
 
-## License
-MIT License - Please refer to the LICENSE file for more details.
+## Autor & Lizenz
+- **Autor:** AME
+- **Version:** HW 0.5 / SW 0.5 (Stand: 2024)
+- **Lizenz:** MIT
+
+---
+Weitere Details und Beispiele findest du in `Readme_iBus.txt` und in den Quellcode-Kommentaren.
